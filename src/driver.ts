@@ -5,10 +5,14 @@
 
 const MOCK_TEXT = "Hello from mock-auth — the core-auth pipeline works end to end.";
 
+function mockText(model) {
+  return MOCK_TEXT + " (served by " + model + ")";
+}
+
 function jsonBody(model) {
   return {
     id: "msg_mock_0001", type: "message", role: "assistant", model,
-    content: [{ type: "text", text: MOCK_TEXT }],
+    content: [{ type: "text", text: mockText(model) }],
     stop_reason: "end_turn", stop_sequence: null,
     usage: { input_tokens: 1, output_tokens: 12 },
   };
@@ -23,7 +27,7 @@ function streamBody(model) {
   return (
     sse("message_start", { type: "message_start", message: msg }) +
     sse("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }) +
-    sse("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: MOCK_TEXT } }) +
+    sse("content_block_delta", { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: mockText(model) } }) +
     sse("content_block_stop", { type: "content_block_stop", index: 0 }) +
     sse("message_delta", { type: "message_delta", delta: { stop_reason: "end_turn", stop_sequence: null }, usage: { output_tokens: 12 } }) +
     sse("message_stop", { type: "message_stop" })
@@ -34,11 +38,18 @@ export const driver = {
   id: "mock",
   label: "Mock",
   opencodeProvider: "anthropic",
-  models: { "mock-model": { name: "Mock Model" } },
-  async handle(request) {
+  // a few models so the Claude model-mapping is demonstrable; each echoes which
+  // model actually served the request so a remap is observable end to end
+  models: {
+    "mock-model": { name: "Mock Default" },
+    "mock-pro": { name: "Mock Pro" },
+    "mock-fast": { name: "Mock Fast" },
+  },
+  async handle(request, ctx) {
     let body = {};
     try { body = await request.clone().json(); } catch {}
-    const model = body.model || "mock-model";
+    // the Claude proxy resolves the mapped provider model into ctx.model
+    const model = (ctx && ctx.model) || body.model || "mock-model";
     if (body.stream) {
       return new Response(streamBody(model), { status: 200, headers: { "content-type": "text/event-stream" } });
     }
