@@ -1,6 +1,6 @@
 {
   "name": "stub-auth",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Stub AI provider driver for core-auth — canned responses to validate the auth pipeline; the reference example for building provider plugins.",
   "main": "dist/index.js",
   "type": "module",
@@ -10,8 +10,18 @@
     "type": "git",
     "url": "git+https://github.com/intisy/stub-auth.git"
   },
-  "keywords": ["core-auth", "provider", "stub", "auth", "example"],
-  "files": ["dist/", "README.md", "LICENSE"],
+  "keywords": [
+    "core-auth",
+    "provider",
+    "stub",
+    "auth",
+    "example"
+  ],
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=20.0.0"
   },
@@ -21,9 +31,18 @@
         "name": "stub",
         "handler": "dist/handler.js",
         "models": [
-          { "id": "stub-model", "name": "Stub Default" },
-          { "id": "stub-pro", "name": "Stub Pro" },
-          { "id": "stub-fast", "name": "Stub Fast" }
+          {
+            "id": "stub-model",
+            "name": "Stub Default"
+          },
+          {
+            "id": "stub-pro",
+            "name": "Stub Pro"
+          },
+          {
+            "id": "stub-fast",
+            "name": "Stub Fast"
+          }
         ]
       }
     ]
