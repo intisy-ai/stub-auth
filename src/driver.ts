@@ -36,7 +36,8 @@ function streamBody(model) {
 export const driver = {
   id: "mock",
   label: "Mock",
-  opencodeProvider: "anthropic",
+  opencodeProvider: "mock",
+  opencodeNpm: "@ai-sdk/anthropic",
   // a few models so the Claude model-mapping is demonstrable
   models: {
     "mock-model": { name: "Mock Default" },
