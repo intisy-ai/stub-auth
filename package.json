@@ -1,0 +1,32 @@
+{
+  "name": "mock-auth",
+  "version": "0.1.0",
+  "description": "Mock AI provider driver for core-auth — canned responses to validate the auth pipeline.",
+  "main": "dist/driver.js",
+  "type": "module",
+  "license": "MIT",
+  "author": "intisy",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/intisy/mock-auth.git"
+  },
+  "keywords": ["core-auth", "provider", "mock", "auth", "test"],
+  "files": ["dist/", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "claudeHub": {
+    "authProviders": [
+      { "name": "mock", "driver": "dist/driver.js" }
+    ]
+  },
+  "scripts": {
+    "build": "npx tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}
