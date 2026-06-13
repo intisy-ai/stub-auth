@@ -1,23 +1,15 @@
 // @ts-nocheck
-// Mock provider driver: implements the core-auth ProviderDriver contract with
-// canned, valid Anthropic Messages API responses (streaming or JSON). It exists
-// to validate the harness end-to-end before real providers are wired.
+// The entire provider: identity, models, and a canned Anthropic-format response
+// (JSON or SSE). Pure — no app or loader knowledge. core-auth turns this into
+// the OpenCode and Claude integrations.
 
 const MOCK_TEXT = "Hello from mock-auth — the core-auth pipeline works end to end.";
 
-async function readBody(request) {
-  try { return await request.clone().json(); } catch { return {}; }
-}
-
 function jsonBody(model) {
   return {
-    id: "msg_mock_0001",
-    type: "message",
-    role: "assistant",
-    model: model,
+    id: "msg_mock_0001", type: "message", role: "assistant", model,
     content: [{ type: "text", text: MOCK_TEXT }],
-    stop_reason: "end_turn",
-    stop_sequence: null,
+    stop_reason: "end_turn", stop_sequence: null,
     usage: { input_tokens: 1, output_tokens: 12 },
   };
 }
@@ -27,11 +19,7 @@ function sse(event, data) {
 }
 
 function streamBody(model) {
-  const msg = {
-    id: "msg_mock_0001", type: "message", role: "assistant", model: model,
-    content: [], stop_reason: null, stop_sequence: null,
-    usage: { input_tokens: 1, output_tokens: 0 },
-  };
+  const msg = { id: "msg_mock_0001", type: "message", role: "assistant", model, content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 1, output_tokens: 0 } };
   return (
     sse("message_start", { type: "message_start", message: msg }) +
     sse("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } }) +
@@ -42,17 +30,14 @@ function streamBody(model) {
   );
 }
 
-const driver = {
+export const driver = {
   id: "mock",
   label: "Mock",
-
-  // no real auth — produce a dummy account so the harness has one to select
-  async authenticate(_ctx) {
-    return { id: "mock-account", label: "Mock account", credentials: {}, meta: { mock: true } };
-  },
-
-  async handle(request, _account, _ctx) {
-    const body = await readBody(request);
+  opencodeProvider: "anthropic",
+  models: { "mock-model": { name: "Mock Model" } },
+  async handle(request) {
+    let body = {};
+    try { body = await request.clone().json(); } catch {}
     const model = body.model || "mock-model";
     if (body.stream) {
       return new Response(streamBody(model), { status: 200, headers: { "content-type": "text/event-stream" } });
@@ -60,5 +45,3 @@ const driver = {
     return new Response(JSON.stringify(jsonBody(model)), { status: 200, headers: { "content-type": "application/json" } });
   },
 };
-
-export default driver;

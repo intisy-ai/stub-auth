@@ -2,7 +2,7 @@
   "name": "mock-auth",
   "version": "0.1.0",
   "description": "Mock AI provider driver for core-auth — canned responses to validate the auth pipeline.",
-  "main": "dist/driver.js",
+  "main": "dist/index.js",
   "type": "module",
   "license": "MIT",
   "author": "intisy",
@@ -17,16 +17,17 @@
   },
   "claudeHub": {
     "authProviders": [
-      { "name": "mock", "driver": "dist/driver.js" }
+      { "name": "mock", "handler": "dist/handler.js" }
     ]
   },
   "scripts": {
-    "build": "npx tsc",
+    "build": "npx tsc --project core-auth/tsconfig.json && npx esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --outfile=dist/handler.js",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
     "@types/node": "^25.9.1",
+    "esbuild": "^0.25.0",
     "typescript": "^6.0.3"
   }
 }
