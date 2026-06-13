@@ -17,7 +17,15 @@
   },
   "claudeHub": {
     "authProviders": [
-      { "name": "mock", "handler": "dist/handler.js" }
+      {
+        "name": "mock",
+        "handler": "dist/handler.js",
+        "models": [
+          { "id": "mock-model", "name": "Mock Default" },
+          { "id": "mock-pro", "name": "Mock Pro" },
+          { "id": "mock-fast", "name": "Mock Fast" }
+        ]
+      }
     ]
   },
   "scripts": {

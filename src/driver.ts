@@ -1,7 +1,6 @@
 // @ts-nocheck
-// The entire provider: identity, models, and a canned Anthropic-format response
-// (JSON or SSE). Pure — no app or loader knowledge. core-auth turns this into
-// the OpenCode and Claude integrations.
+// The whole provider: a canned Anthropic-format response (JSON or SSE). core-auth
+// turns this into the OpenCode and Claude integrations.
 
 const MOCK_TEXT = "Hello from mock-auth — the core-auth pipeline works end to end.";
 
@@ -38,8 +37,7 @@ export const driver = {
   id: "mock",
   label: "Mock",
   opencodeProvider: "anthropic",
-  // a few models so the Claude model-mapping is demonstrable; each echoes which
-  // model actually served the request so a remap is observable end to end
+  // a few models so the Claude model-mapping is demonstrable
   models: {
     "mock-model": { name: "Mock Default" },
     "mock-pro": { name: "Mock Pro" },
