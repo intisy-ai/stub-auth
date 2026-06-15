@@ -1,6 +1,18 @@
 // @ts-nocheck
 // The whole provider: a canned Anthropic-format response (JSON or SSE). core-auth
-// turns this into the OpenCode and Claude integrations.
+// turns this into the OpenCode and Claude integrations. Includes a fake login so it
+// demonstrates the shared account menu with only the core default options.
+
+import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
+
+const accountManager = new AccountManager("stub", {});
+
+function stubAddAccount() {
+  const n = accountManager.list().length + 1;
+  const account = { id: "stub-" + n + "@example.com", email: "stub-" + n + "@example.com", refresh: "stub-refresh-" + n, addedAt: Date.now(), lastUsed: 0, enabled: true };
+  addAccount("stub", account);
+  return account;
+}
 
 const STUB_TEXT = "Hello from stub-auth — the core-auth pipeline works end to end.";
 
@@ -53,4 +65,6 @@ export const driver = {
     }
     return new Response(JSON.stringify(jsonBody(model)), { status: 200, headers: { "content-type": "application/json" } });
   },
+  loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth) — completes immediately.", complete: async () => stubAddAccount() }),
+  accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
 };
