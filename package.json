@@ -48,7 +48,7 @@
     ]
   },
   "scripts": {
-    "build": "npx tsc --project core-auth/sync-bridge/tsconfig.json && npx tsc --project core-auth/tsconfig.json && npx esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --outfile=dist/handler.js",
+    "build": "npx tsc --project core-auth/tsconfig.json && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/handler.js",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
