@@ -28,7 +28,9 @@ flowchart LR
 - `src/driver.ts` — the provider: `id`/`label`/`models` + `handle()` returning the canned response.
 - `src/index.ts` — OpenCode entry (`defineProvider(driver).opencode`).
 - `src/handler.ts` — Claude entry (the named `handle` the loader proxy calls).
-- `dist/` — esbuild bundles core-auth in, producing self-contained `index.js` + `handler.js`.
+- `src/commands.ts` — cross-app slash-commands (the reference example of the command framework).
+- `core-auth/`, `core/` — git submodules (auth engine; shared config/logging/commands), bundled in.
+- `dist/` — esbuild bundles the submodules in, producing self-contained `index.js` + `handler.js`.
 
 ## Installation
 
@@ -48,8 +50,23 @@ npm install stub-auth
 
 ## Configuration
 
-`stub-auth` has no settings of its own. The active provider is stored by the loader; OpenCode selects
-it via `oc auth login` + a `stub/...` model.
+`stub-auth` has no settings of its own beyond `logging` (a `config/stub-auth.json` with `{ "logging": false }`
+to silence it). The active provider is stored by the loader; OpenCode selects it via `oc auth login` + a
+`stub/...` model. The config is editable from chat via `/stub-auth-config`.
+
+## Commands
+
+Deployed automatically to both apps on load (`~/.config/opencode/command/` and `~/.claude/commands/`):
+
+| Command | Description |
+| --- | --- |
+| `/stub-auth-config` | View/change config: `list`, `get <key>`, `set <key> <value>`. |
+| `/stub-accounts` | List the stub demo accounts. |
+
+## Dependencies
+
+- **`core`** (required) — bundled git submodule (config + logging + commands).
+- **`core-auth`** (required) — bundled git submodule (provider framework + account store).
 
 ## Logging
 

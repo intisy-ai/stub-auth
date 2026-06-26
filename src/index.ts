@@ -4,5 +4,18 @@
 
 import { defineProvider } from "../core-auth/dist/index.js";
 import { driver } from "./driver.js";
+import { deployCommands } from "../core/src/index.js";
+import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
+
+// Slash-command / config invocations shell back in as `node <bundle> <action>`;
+// handle those first and exit so they never register the provider.
+if (await maybeRunCli("stub-auth")) {
+  process.exit(0);
+}
+try {
+  deployCommands("stub-auth", STUB_COMMANDS);
+} catch {
+  /* best-effort */
+}
 
 export const StubProvider = defineProvider(driver).opencode;
