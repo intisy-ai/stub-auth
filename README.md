@@ -50,6 +50,8 @@ npm install stub-auth
 
 ## Configuration
 
+> Config files are **auto-created with defaults on first run** (via core `ensureConfig`). **Global console logging** for every plugin is toggled in `config/settings.json` (`logConsole: true`, the opencode.json-equivalent).
+
 `stub-auth` has no settings of its own beyond `logging` (a `config/stub-auth.json` with `{ "logging": false }`
 to silence it). The active provider is stored by the loader; OpenCode selects it via `oc auth login` + a
 `stub/...` model. The config is editable from chat via `/stub-auth-config`.
