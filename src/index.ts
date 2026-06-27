@@ -4,7 +4,7 @@
 
 import { defineProvider } from "../core-auth/dist/index.js";
 import { driver } from "./driver.js";
-import { deployCommands } from "../core/src/index.js";
+import { deployCommands, ensureConfig } from "../core/src/index.js";
 import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
 
 // Slash-command / config invocations shell back in as `node <bundle> <action>`;
@@ -14,6 +14,7 @@ if (await maybeRunCli("stub-auth")) {
 }
 try {
   deployCommands("stub-auth", STUB_COMMANDS);
+  ensureConfig("stub-auth", { logging: true });
 } catch {
   /* best-effort */
 }
