@@ -1,6 +1,6 @@
 {
   "name": "stub-auth",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "Stub AI provider driver for core-auth — canned responses to validate the auth pipeline; the reference example for building provider plugins.",
   "main": "dist/index.js",
   "type": "module",
