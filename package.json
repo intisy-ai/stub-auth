@@ -48,7 +48,7 @@
     ]
   },
   "scripts": {
-    "build": "node ../../tools/teavm-build/teavm-build.mjs --java-dir java --module :stub-teavm --out src/generated/stub-provider.teavm.js && npx tsc --project core-auth/tsconfig.json && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/javaProvider.ts --bundle --platform=node --format=esm --outfile=dist/javaProvider.js",
+    "build": "node core/teavm-build.mjs --java-dir java --module :stub-teavm --out src/generated/stub-provider.teavm.js && npx tsc --project core-auth/tsconfig.json && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/javaProvider.ts --bundle --platform=node --format=esm --outfile=dist/javaProvider.js",
     "postbuild": "node dist/index.js readme",
     "test": "npm run build && vitest run",
     "prepublishOnly": "npm run build"
