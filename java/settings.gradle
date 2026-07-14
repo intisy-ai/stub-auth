@@ -11,7 +11,19 @@ rootProject.name = "stub-auth-java"
 include ":routing"
 project(":routing").projectDir = file("../core-proxy/java/routing")
 
+// :teavm - core-proxy's own TeaVM js-base (SimpleJsonCodec/JsHttpClientBridge/JsStoreBridge/
+// CoreProxyJs), aliased in exactly like :routing above so :stub-teavm (Task 5) can depend on it
+// with a plain project(":teavm") reference and reuse SimpleJsonCodec rather than duplicate it --
+// mirrors core-auth's own settings.gradle aliasing of core-proxy's :routing/:teavm.
+include ":teavm"
+project(":teavm").projectDir = file("../core-proxy/java/teavm")
+
 include ":stub-provider"
+
+// :stub-teavm - TeaVM JS export surface over :stub-provider (StubProviderJs) -> generateJavaScript
+// emits an ES2015 module (stub-provider.js). Reuses :teavm's js-base instead of duplicating it,
+// mirroring core-auth's :auth-teavm exactly (Task 5's js half of the shared-Java model).
+include ":stub-teavm"
 
 // ---- test-only composite build -------------------------------------------------------------
 // Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real

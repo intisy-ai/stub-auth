@@ -44,14 +44,30 @@ public final class StubProvider implements Provider {
     @Override
     public HttpResponse handle(HttpRequest req, HandlerCtx ctx) throws Exception {
         String model = resolveModel(req, ctx);
-        String text = stubText(model, RESPONSE_TEXT);
 
         HttpResponse resp = new HttpResponse();
         resp.status = 200;
         resp.headers = new HashMap<>();
         resp.headers.put("content-type", "application/json");
-        resp.body = jsonBody(model, text);
+        resp.body = buildCannedBody(model);
         return resp;
+    }
+
+    /**
+     * The transpilable "core" this provider's JVM {@link #handle} calls, ALSO reused verbatim by
+     * {@code StubProviderJs} (the {@code :stub-teavm} TeaVM export, Task 5's js half of the
+     * shared-Java model) once {@code model} has already been resolved — pure {@code String}/
+     * {@code StringBuilder} construction, no gson/java.net/nio/reflection/threads/{@code
+     * System.getenv}, so TeaVM compiles it unchanged. {@code model} resolution itself stays
+     * split per caller: the JVM path resolves it via {@link #resolveModel} (ctx then a regex read
+     * of the request body); the JS path resolves it via {@code SimpleJsonCodec} (core-proxy's
+     * {@code :teavm} js-base) instead of duplicating a second JSON reader here — this method is
+     * the shared seam between the two, taking an already-resolved {@code model} so neither side's
+     * JSON-reading choice leaks into the other.
+     */
+    public static String buildCannedBody(String model) {
+        String text = stubText(model, RESPONSE_TEXT);
+        return jsonBody(model, text);
     }
 
     // ctx.model (the tier-resolved assignment) wins when present; otherwise fall back to the
@@ -109,7 +125,7 @@ public final class StubProvider implements Provider {
                 case '\t': sb.append("\\t"); break;
                 default:
                     if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
+                        appendUnicodeEscape(sb, c);
                     } else {
                         sb.append(c);
                     }
@@ -117,5 +133,15 @@ public final class StubProvider implements Provider {
         }
         sb.append('"');
         return sb.toString();
+    }
+
+    // Hand-rolled (no String.format -- TeaVM's Formatter support is unreliable, exactly why
+    // core-proxy's own SimpleJsonCodec avoids it too): unicode-escape prefix + 4-digit lowercase
+    // hex, zero-padded. Byte-identical output to the String.format("\\u%04x", ...) this replaces.
+    private static void appendUnicodeEscape(StringBuilder sb, char c) {
+        sb.append("\\u");
+        String hex = Integer.toHexString(c);
+        for (int pad = hex.length(); pad < 4; pad++) sb.append('0');
+        sb.append(hex);
     }
 }
