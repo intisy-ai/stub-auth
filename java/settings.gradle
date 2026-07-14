@@ -1,0 +1,35 @@
+rootProject.name = "stub-auth-java"
+
+// stub-auth's Java side: a thin Provider module for core-proxy's Provider SPI, proven
+// dynamically-loadable by ai-java's ProviderRegistry (ServiceLoader over a directory of jars).
+//
+// core-proxy is a DIRECT submodule of stub-auth (../core-proxy from here, i.e.
+// stub-auth/core-proxy) -- not core-auth's own nested copy. :routing is aliased in exactly the
+// way ai-java's own root settings.gradle aliases it (project path preserved, just a different
+// projectDir) so the SAME technique/coordinates line up on both sides of the composite build
+// below.
+include ":routing"
+project(":routing").projectDir = file("../core-proxy/java/routing")
+
+include ":stub-provider"
+
+// ---- test-only composite build -------------------------------------------------------------
+// Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
+// AiJava/ProviderRegistry and route a request through the jar this build produces -- proving
+// dynamic loading end-to-end without ai-java ever being told stub-auth exists (pure ServiceLoader
+// discovery). This is a LOCAL DEV-ONLY path: ai-java is not published anywhere, so this only
+// works when both repos are checked out side by side on the same machine. Override the location
+// with -PaiJavaDir=<path> if your checkout isn't at the default.
+//
+// Gradle composite builds keep each build's project-path namespace separate, so ai-java's own
+// (differently-aliased) ":routing" project inside its included build does not collide with the
+// ":routing" this settings.gradle declares above -- they're resolved via group:module dependency
+// substitution (io.github.intisy:jvm), not by project path.
+def aiJavaDir = file(providers.gradleProperty("aiJavaDir").getOrElse("F:/Documents/GitHub/java/ai-java"))
+if (aiJavaDir.isDirectory()) {
+    includeBuild(aiJavaDir)
+} else {
+    logger.warn("stub-auth java: ai-java not found at ${aiJavaDir} -- the includeBuild-based " +
+            "integration test (StubProviderIntegrationTest) will fail to resolve io.github.intisy:jvm. " +
+            "Pass -PaiJavaDir=<path-to-ai-java> to point at a different checkout.")
+}

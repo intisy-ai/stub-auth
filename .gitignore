@@ -5,3 +5,8 @@ dist/
 .idea/
 package-lock.json
 .superpowers/
+
+# java/ Gradle module (stub-provider) — build output only, never source.
+java/build/
+java/*/build/
+java/.gradle/

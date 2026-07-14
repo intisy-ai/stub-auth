@@ -1,0 +1,23 @@
+dependencies {
+    // The Provider SPI is provided by the HOST at runtime (ai-java's ProviderRegistry loads
+    // this jar on a URLClassLoader parented to its own, which already has core-proxy's
+    // Provider/ProxyHandler/HandlerCtx/HttpRequest/HttpResponse classes loaded) -- compileOnly
+    // keeps this jar THIN: `./gradlew :stub-provider:jar` must NOT bundle
+    // io/github/intisy/ai/shared/routing/Provider.class (or any other :routing class) inside it.
+    compileOnly project(":routing")
+
+    // Test-only: constructs a real AiJava/ProviderRegistry (via the includeBuild composite in
+    // ../settings.gradle) to prove this module's OWN built jar dynamically loads and routes a
+    // request end to end. io.github.intisy:jvm's api dependencies (:routing/:accounts) come
+    // along transitively, so :routing types are visible to the test without a second declaration.
+    testImplementation "io.github.intisy:jvm:0.1.0"
+}
+
+// The integration test drops THIS module's own built jar into a temp providers dir -- it must
+// always test the artifact `jar` just produced, never a stale one from a previous build, and
+// never a hand-duplicated path/version string in test source. dependsOn(jar) + the injected
+// system property give the test exactly that.
+test {
+    dependsOn(tasks.named("jar"))
+    systemProperty "stubProviderJar", tasks.named("jar").get().archiveFile.get().asFile.absolutePath
+}
