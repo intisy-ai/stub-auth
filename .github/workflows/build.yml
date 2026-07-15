@@ -1,0 +1,28 @@
+name: Publish Java Provider
+
+on:
+  push:
+    tags:
+      - '[0-9]*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - run: chmod +x java/gradlew
+      - name: Publish stub-provider jar as a github-gradle package
+        working-directory: java
+        run: ./gradlew :stub-provider:jar :stub-provider:publishGithub -Partifact_version=${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+          GH_TOKEN: ${{ secrets.PAT }}
