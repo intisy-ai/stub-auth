@@ -34,6 +34,12 @@ subprojects {
         options.release = 8
     }
 
+    // Source is UTF-8 regardless of the build host's platform charset (Windows defaults to
+    // Windows-1252, which mojibakes non-ASCII literals such as the em dash into the TeaVM output).
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+    }
+
     dependencies {
         testImplementation "org.junit.jupiter:junit-jupiter:5.10.1"
     }
