@@ -5,6 +5,7 @@
 
 import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
+import { handleViaOrchestrator } from "./javaProvider.js";
 
 // Account rotation lives in core-auth (selection.ts); the strategy is just config.
 const accountManager = new AccountManager("stub", { selection: getConfigValue("stub-auth", "account_selection_strategy") || "hybrid" });
@@ -70,6 +71,57 @@ function streamBody(model: string, responseText: string) {
 const initialCfg = defineConfig("stub-auth", {});
 const initialModelCount = typeof initialCfg.model_count === "number" ? initialCfg.model_count : 3;
 
+export async function handleViaTs(request, ctx) {
+  // Read config per-request (merges registered defaults with on-disk values).
+  const cfg = defineConfig("stub-auth", {});
+  const responseText = typeof cfg.response_text === "string"
+    ? cfg.response_text
+    : "Hello from stub-auth — the core-auth pipeline works end to end.";
+  const latencyMs = typeof cfg.latency_ms === "number" ? cfg.latency_ms : 0;
+  const failRate  = typeof cfg.fail_rate  === "number" ? cfg.fail_rate  : 0;
+  const streamingCfg = cfg.streaming;  // null/undefined = honor request; true/false = force
+
+  // Fail fast if configured — useful for testing retry logic.
+  if (failRate > 0 && Math.random() < failRate) {
+    return new Response(
+      JSON.stringify({ type: "error", error: { type: "overloaded_error", message: "Stub overloaded (fail_rate)" } }),
+      { status: 529, headers: { "content-type": "application/json" } },
+    );
+  }
+
+  let body: Record<string, unknown> = {};
+  try { body = await request.clone().json(); } catch {}
+  const model = (ctx && ctx.model) || body.model || "stub-model";
+
+  // Simulate latency before returning.
+  if (latencyMs > 0) await new Promise(r => setTimeout(r, latencyMs));
+
+  // streaming: null/undefined honors request flag; true/false overrides it.
+  const useStream = (streamingCfg === null || streamingCfg === undefined) ? !!body.stream : !!streamingCfg;
+
+  if (useStream) {
+    return new Response(streamBody(model, responseText), { status: 200, headers: { "content-type": "text/event-stream" } });
+  }
+  return new Response(JSON.stringify(jsonBody(model, responseText)), { status: 200, headers: { "content-type": "application/json" } });
+}
+
+async function handle(request, ctx) {
+  let bodyText;
+  try { bodyText = await request.clone().text(); } catch { bodyText = ""; }
+  const cfg = defineConfig("stub-auth", {});
+  const inputsJson = JSON.stringify({ bodyText: bodyText ?? "", ctxModel: (ctx && ctx.model) || "" });
+  const configJson = JSON.stringify({
+    responseText: typeof cfg.response_text === "string" ? cfg.response_text : undefined,
+    latencyMs: typeof cfg.latency_ms === "number" ? cfg.latency_ms : 0,
+    failRate: typeof cfg.fail_rate === "number" ? cfg.fail_rate : 0,
+    streaming: (cfg.streaming === true || cfg.streaming === false) ? cfg.streaming : null,
+  });
+  const jsRandom = () => Math.random();
+  const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
+  return new Response(decision.body, { status: decision.status, headers: decision.headers });
+}
+
 export const driver = {
   id: "stub",
   label: "Stub",
@@ -77,39 +129,7 @@ export const driver = {
   opencodeNpm: "@ai-sdk/anthropic",
   // models derived from config at startup; default 3 = identical to prior behavior
   models: buildModels(initialModelCount),
-  async handle(request, ctx) {
-    // Read config per-request (merges registered defaults with on-disk values).
-    const cfg = defineConfig("stub-auth", {});
-    const responseText = typeof cfg.response_text === "string"
-      ? cfg.response_text
-      : "Hello from stub-auth — the core-auth pipeline works end to end.";
-    const latencyMs = typeof cfg.latency_ms === "number" ? cfg.latency_ms : 0;
-    const failRate  = typeof cfg.fail_rate  === "number" ? cfg.fail_rate  : 0;
-    const streamingCfg = cfg.streaming;  // null/undefined = honor request; true/false = force
-
-    // Fail fast if configured — useful for testing retry logic.
-    if (failRate > 0 && Math.random() < failRate) {
-      return new Response(
-        JSON.stringify({ type: "error", error: { type: "overloaded_error", message: "Stub overloaded (fail_rate)" } }),
-        { status: 529, headers: { "content-type": "application/json" } },
-      );
-    }
-
-    let body: Record<string, unknown> = {};
-    try { body = await request.clone().json(); } catch {}
-    const model = (ctx && ctx.model) || body.model || "stub-model";
-
-    // Simulate latency before returning.
-    if (latencyMs > 0) await new Promise(r => setTimeout(r, latencyMs));
-
-    // streaming: null/undefined honors request flag; true/false overrides it.
-    const useStream = (streamingCfg === null || streamingCfg === undefined) ? !!body.stream : !!streamingCfg;
-
-    if (useStream) {
-      return new Response(streamBody(model, responseText), { status: 200, headers: { "content-type": "text/event-stream" } });
-    }
-    return new Response(JSON.stringify(jsonBody(model, responseText)), { status: 200, headers: { "content-type": "application/json" } });
-  },
+  handle,
   loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth) — completes immediately.", complete: async () => stubAddAccount() }),
   accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
   // Even the stub exposes a Settings entry in its auth menu — the Response group is
