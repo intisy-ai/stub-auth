@@ -10,14 +10,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Java port of stub-auth's TS driver ({@code src/driver.ts}, non-streaming branch only —
- * streaming SSE is deferred, per this task's brief). Ported field-for-field from
- * {@code jsonBody}/{@code stubText} (src/driver.ts:44-55): same {@code id}, same
+ * Java port of stub-auth's TS driver ({@code src/driver.ts}). Ported field-for-field from
+ * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
  * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
- * 12), and the same {@code responseText + " (served by " + model + ")"} text shape. The TS side
- * reads {@code responseText} from stub-auth's own config (default a longer sentence); this Java
- * port hardcodes the brief's fixed literal ({@code "stub response"}) since there is no
- * config-loading seam on this side of the boundary.
+ * 12), and the same {@code responseText + " (served by " + model + ")"} text shape. The JVM
+ * {@link #handle} passes {@link #DEFAULT_RESPONSE_TEXT} since there is no config-loading seam on
+ * this side of the boundary; callers with a real response text use {@link #buildCannedBody} /
+ * {@link #buildStreamBody} directly.
  *
  * <p>Registered via {@code META-INF/services/io.github.intisy.ai.shared.routing.Provider} so a
  * JVM host discovers it purely through {@code ServiceLoader} — see
@@ -27,7 +26,7 @@ import java.util.regex.Pattern;
  */
 public final class StubProvider implements Provider {
 
-    private static final String RESPONSE_TEXT = "stub response";
+    public static final String DEFAULT_RESPONSE_TEXT = "stub response";
     private static final String DEFAULT_MODEL = "stub-model";
 
     // Minimal, dependency-free extraction of the top-level "model" string field out of the
@@ -49,7 +48,7 @@ public final class StubProvider implements Provider {
         resp.status = 200;
         resp.headers = new HashMap<>();
         resp.headers.put("content-type", "application/json");
-        resp.body = buildCannedBody(model);
+        resp.body = buildCannedBody(model, DEFAULT_RESPONSE_TEXT);
         return resp;
     }
 
@@ -65,9 +64,30 @@ public final class StubProvider implements Provider {
      * the shared seam between the two, taking an already-resolved {@code model} so neither side's
      * JSON-reading choice leaks into the other.
      */
-    public static String buildCannedBody(String model) {
-        String text = stubText(model, RESPONSE_TEXT);
-        return jsonBody(model, text);
+    public static String buildCannedBody(String model, String responseText) {
+        return jsonBody(model, stubText(model, responseText));
+    }
+
+    public static String buildStreamBody(String model, String responseText) {
+        String text = stubText(model, responseText);
+        String startMsg = "{\"id\":\"msg_stub_0001\",\"type\":\"message\",\"role\":\"assistant\",\"model\":"
+                + quote(model) + ",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,"
+                + "\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}";
+        StringBuilder sb = new StringBuilder();
+        sb.append(sse("message_start", "{\"type\":\"message_start\",\"message\":" + startMsg + "}"));
+        sb.append(sse("content_block_start",
+                "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"));
+        sb.append(sse("content_block_delta",
+                "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":" + quote(text) + "}}"));
+        sb.append(sse("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}"));
+        sb.append(sse("message_delta",
+                "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":12}}"));
+        sb.append(sse("message_stop", "{\"type\":\"message_stop\"}"));
+        return sb.toString();
+    }
+
+    private static String sse(String event, String dataJson) {
+        return "event: " + event + "\ndata: " + dataJson + "\n\n";
     }
 
     // ctx.model (the tier-resolved assignment) wins when present; otherwise fall back to the
