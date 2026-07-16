@@ -55,8 +55,13 @@ public final class StubHandleOrchestrator {
     }
 
     private Map<?, ?> parseObject(String text) {
-        Object parsed = text != null ? json.parse(text) : null;
-        return parsed instanceof Map ? (Map<?, ?>) parsed : null;
+        if (text == null) return null;
+        try {
+            Object parsed = json.parse(text);
+            return parsed instanceof Map ? (Map<?, ?>) parsed : null;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static boolean truthy(Object v) {

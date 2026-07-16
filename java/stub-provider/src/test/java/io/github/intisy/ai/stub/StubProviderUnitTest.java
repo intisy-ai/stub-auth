@@ -114,4 +114,39 @@ class StubProviderUnitTest {
         in.bodyText = "{\"stream\":true}";
         assertEquals("text/event-stream", orch.handle(in, cfg, () -> 0.9, ms -> {}).headers.get("content-type"));
     }
+
+    @Test
+    void orchestrator_failRate_shortCircuitsBeforeLatency() {
+        StubHandleOrchestrator orch = new StubHandleOrchestrator(new GsonJsonCodec());
+        StubHandleOrchestrator.RequestInputs in = new StubHandleOrchestrator.RequestInputs();
+        in.bodyText = "{}";
+        StubHandleOrchestrator.OrchestratorConfig cfg = new StubHandleOrchestrator.OrchestratorConfig();
+        cfg.responseText = "x"; cfg.failRate = 1.0; cfg.latencyMs = 500;
+        boolean[] slept = {false};
+        StubHandleOrchestrator.HandleDecision d = orch.handle(in, cfg, () -> 0.0, ms -> slept[0] = true);
+        assertEquals(529, d.status);
+        assertFalse(slept[0], "fail_rate must short-circuit before the latency sleep");
+    }
+
+    @Test
+    void orchestrator_streamFalseOverride_forcesJsonDespiteBodyStream() {
+        StubHandleOrchestrator orch = new StubHandleOrchestrator(new GsonJsonCodec());
+        StubHandleOrchestrator.RequestInputs in = new StubHandleOrchestrator.RequestInputs();
+        in.bodyText = "{\"stream\":true}";
+        StubHandleOrchestrator.OrchestratorConfig cfg = new StubHandleOrchestrator.OrchestratorConfig();
+        cfg.responseText = "x"; cfg.streaming = Boolean.FALSE;
+        assertEquals("application/json", orch.handle(in, cfg, () -> 0.9, ms -> {}).headers.get("content-type"));
+    }
+
+    @Test
+    void orchestrator_malformedBody_doesNotThrow_fallsBackToDefaultModel() {
+        StubHandleOrchestrator orch = new StubHandleOrchestrator(new GsonJsonCodec());
+        StubHandleOrchestrator.RequestInputs in = new StubHandleOrchestrator.RequestInputs();
+        in.bodyText = "not json {";
+        StubHandleOrchestrator.OrchestratorConfig cfg = new StubHandleOrchestrator.OrchestratorConfig();
+        cfg.responseText = "x";
+        StubHandleOrchestrator.HandleDecision d = orch.handle(in, cfg, () -> 0.9, ms -> {});
+        assertEquals(200, d.status);
+        assertTrue(d.body.contains("(served by stub-model)"));
+    }
 }
