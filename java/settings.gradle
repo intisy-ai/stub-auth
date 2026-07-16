@@ -37,7 +37,7 @@ include ":stub-teavm"
 // (differently-aliased) ":routing" project inside its included build does not collide with the
 // ":routing" this settings.gradle declares above -- they're resolved via group:module dependency
 // substitution (io.github.intisy:jvm), not by project path.
-def aiJavaDir = file(providers.gradleProperty("aiJavaDir").getOrElse("F:/Documents/GitHub/java/ai-java"))
+def aiJavaDir = file(providers.gradleProperty("aiJavaDir").getOrElse("F:/Documents/GitHub/ai/java/ai-java"))
 if (aiJavaDir.isDirectory()) {
     includeBuild(aiJavaDir)
 } else {

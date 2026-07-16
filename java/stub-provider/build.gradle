@@ -13,21 +13,26 @@ dependencies {
     testImplementation "io.github.intisy:jvm:0.1.0"
 }
 
-// The integration test drops THIS module's own built jar into a temp providers dir -- it must
-// always test the artifact `jar` just produced, never a stale one from a previous build, and
-// never a hand-duplicated path/version string in test source. dependsOn(jar) + the injected
-// system property give the test exactly that.
-test {
-    dependsOn(tasks.named("jar"))
-    systemProperty "stubProviderJar", tasks.named("jar").get().archiveFile.get().asFile.absolutePath
-}
-
 // Keep the jar filename version-less (stub-provider.jar) even though project.version is now set
 // (for publishGithub's package version) -- publishGithub's artifacts block below references
 // build/libs/stub-provider.jar by that exact name, and the uploaded asset is renamed to
-// stub-auth-provider.jar from `repo` + classifier anyway.
+// stub-auth-provider.jar from `repo` + classifier anyway. Declared BEFORE `test` so the
+// archiveVersion="" is applied before the test block reads archiveFile's path.
 jar {
     archiveVersion = ""
+}
+
+// The integration test drops THIS module's own built jar into a temp providers dir -- it must
+// always test the artifact `jar` just produced, never a stale one from a previous build, and
+// never a hand-duplicated path/version string in test source. dependsOn(jar) + the injected
+// system property give the test exactly that. The path is read at execution time (doFirst) so it
+// reflects the final archiveVersion, not an eagerly-resolved config-time value.
+test {
+    dependsOn(tasks.named("jar"))
+    def jarArchive = tasks.named("jar", Jar).flatMap { it.archiveFile }
+    doFirst {
+        systemProperty "stubProviderJar", jarArchive.get().asFile.absolutePath
+    }
 }
 
 publishGithub {
