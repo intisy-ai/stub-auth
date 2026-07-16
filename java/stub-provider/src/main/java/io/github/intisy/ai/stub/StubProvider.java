@@ -86,6 +86,26 @@ public final class StubProvider implements Provider {
         return sb.toString();
     }
 
+    /**
+     * Port of {@code src/driver.ts}'s {@code buildModels}: first three fixed ids/names, then
+     * {@code stub-N} (1-based) beyond, clamped to at least one model.
+     */
+    public static String buildModels(int count) {
+        int safe = Math.max(1, count);
+        StringBuilder sb = new StringBuilder("{");
+        for (int i = 0; i < safe; i++) {
+            if (i > 0) sb.append(",");
+            String id;
+            String name;
+            if (i == 0) { id = "stub-model"; name = "Stub Default"; }
+            else if (i == 1) { id = "stub-pro"; name = "Stub Pro"; }
+            else if (i == 2) { id = "stub-fast"; name = "Stub Fast"; }
+            else { id = "stub-" + (i + 1); name = "Stub " + (i + 1); }
+            sb.append(quote(id)).append(":{\"name\":").append(quote(name)).append("}");
+        }
+        return sb.append("}").toString();
+    }
+
     private static String sse(String event, String dataJson) {
         return "event: " + event + "\ndata: " + dataJson + "\n\n";
     }
