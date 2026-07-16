@@ -1,58 +1,79 @@
 package io.github.intisy.ai.js;
 
 import io.github.intisy.ai.shared.spi.JsonCodec;
+import io.github.intisy.ai.stub.StubHandleOrchestrator;
 import io.github.intisy.ai.stub.StubProvider;
 
 import org.teavm.jso.JSExport;
+import org.teavm.jso.core.JSPromise;
+import org.teavm.jso.core.JSString;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * TeaVM JS export surface over stub-auth's Java provider ({@code StubProvider}) — the js half of
- * Task 5's shared-Java model proof (T4 proved the JVM/ServiceLoader half). Lives in the SAME
- * package ({@code io.github.intisy.ai.js}) as core-proxy's {@code :teavm} module (a Gradle
- * project dependency, see {@code stub-teavm/build.gradle}), so {@link SimpleJsonCodec} is
- * referenced unqualified exactly like {@code CoreAuthJs}/{@code CoreProxyJs} do — NOT duplicated
- * here.
- *
- * <p>{@link #handle} resolves {@code model} out of the request JSON via {@code SimpleJsonCodec}
- * (never regex — that's {@code StubProvider}'s own JVM-side {@code resolveModel} concern, kept on
- * that side of the boundary) and then calls {@link StubProvider#buildCannedBody}, the SAME method
- * {@code StubProvider.handle} calls on the JVM path — one Java method, compiled twice (javac for
- * the {@code :stub-provider} jar, TeaVM for this module), producing byte-identical canned bodies.
- */
 public final class StubProviderJs {
-    private StubProviderJs() {
-    }
+    private StubProviderJs() {}
 
-    // Mirrors StubProvider's own private DEFAULT_MODEL constant -- duplicated here as a literal
-    // (not exposed as public API on StubProvider) since it's this export's own fallback for a
-    // request body that omits "model" entirely, matching resolveModel's fallback precedence
-    // ((ctx-less here, since this export has no HandlerCtx concept) body.model || "stub-model").
-    private static final String DEFAULT_MODEL = "stub-model";
-
-    /**
-     * Non-streaming canned-response export: {@code requestJson} is a {@code /v1/messages}-style
-     * request body (only the top-level {@code "model"} field is read). Returns the same JSON body
-     * shape {@code StubProvider.handle} returns on the JVM side and {@code src/driver.ts}'s
-     * {@code jsonBody()} returns on the TS side: {@code msg_stub_0001} id, {@code "(served by
-     * <model>)"} text, {@code usage.output_tokens:12}.
-     */
     @JSExport
-    public static String handle(String requestJson) {
-        JsonCodec json = new SimpleJsonCodec();
-        String model = extractModel(json, requestJson);
-        return StubProvider.buildCannedBody(model);
+    public static String buildModelsJson(int count) {
+        return StubProvider.buildModels(count);
     }
 
-    private static String extractModel(JsonCodec json, String requestJson) {
-        Object parsed = requestJson != null ? json.parse(requestJson) : null;
-        if (parsed instanceof Map) {
-            Object model = ((Map<?, ?>) parsed).get("model");
-            if (model instanceof String && !((String) model).isEmpty()) {
-                return (String) model;
+    @JSExport
+    public static JSPromise<JSString> handleStubRequestAsync(
+            String inputsJson, String configJson,
+            StubSeamBridges.JsRandomFn jsRandom, StubSeamBridges.JsSleepFn jsSleep) {
+        return new JSPromise<>((resolve, reject) -> new Thread(() -> {
+            try {
+                JsonCodec json = new SimpleJsonCodec();
+                StubHandleOrchestrator orch = new StubHandleOrchestrator(json);
+                StubHandleOrchestrator.RequestInputs in = parseInputs(json, inputsJson);
+                StubHandleOrchestrator.OrchestratorConfig cfg = parseConfig(json, configJson);
+                StubHandleOrchestrator.HandleDecision d = orch.handle(
+                        in, cfg, StubSeamBridges.randomSource(jsRandom), StubSeamBridges.sleeper(jsSleep));
+                resolve.accept(JSString.valueOf(decisionToJson(json, d)));
+            } catch (Throwable e) {
+                reject.accept(JSString.valueOf("handleStubRequestAsync failed: " + e));
             }
-        }
-        return DEFAULT_MODEL;
+        }).start());
     }
+
+    private static StubHandleOrchestrator.RequestInputs parseInputs(JsonCodec json, String inputsJson) {
+        StubHandleOrchestrator.RequestInputs in = new StubHandleOrchestrator.RequestInputs();
+        Object parsed = inputsJson != null ? json.parse(inputsJson) : null;
+        if (parsed instanceof Map) {
+            Map<?, ?> m = (Map<?, ?>) parsed;
+            in.bodyText = asString(m.get("bodyText"));
+            in.ctxModel = asString(m.get("ctxModel"));
+        }
+        return in;
+    }
+
+    private static StubHandleOrchestrator.OrchestratorConfig parseConfig(JsonCodec json, String configJson) {
+        StubHandleOrchestrator.OrchestratorConfig cfg = new StubHandleOrchestrator.OrchestratorConfig();
+        cfg.responseText = "Hello from stub-auth — the core-auth pipeline works end to end.";
+        Object parsed = configJson != null ? json.parse(configJson) : null;
+        if (parsed instanceof Map) {
+            Map<?, ?> m = (Map<?, ?>) parsed;
+            Object rt = m.get("responseText");
+            if (rt instanceof String) cfg.responseText = (String) rt;
+            Object lat = m.get("latencyMs");
+            if (lat instanceof Number) cfg.latencyMs = ((Number) lat).intValue();
+            Object fr = m.get("failRate");
+            if (fr instanceof Number) cfg.failRate = ((Number) fr).doubleValue();
+            Object st = m.get("streaming");
+            if (st instanceof Boolean) cfg.streaming = (Boolean) st;
+        }
+        return cfg;
+    }
+
+    private static String decisionToJson(JsonCodec json, StubHandleOrchestrator.HandleDecision d) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("status", d.status);
+        out.put("headers", d.headers);
+        out.put("body", d.body);
+        return json.stringify(out);
+    }
+
+    private static String asString(Object o) { return o instanceof String ? (String) o : null; }
 }
