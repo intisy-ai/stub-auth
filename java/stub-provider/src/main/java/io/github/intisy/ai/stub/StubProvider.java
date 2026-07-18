@@ -1,11 +1,22 @@
 package io.github.intisy.ai.stub;
 
+import io.github.intisy.ai.shared.routing.AccountQuota;
+import io.github.intisy.ai.shared.routing.ConfigSchema;
+import io.github.intisy.ai.shared.routing.ConfigurableProvider;
 import io.github.intisy.ai.shared.routing.HandlerCtx;
+import io.github.intisy.ai.shared.routing.ModelCatalogProvider;
+import io.github.intisy.ai.shared.routing.ModelInfo;
 import io.github.intisy.ai.shared.routing.Provider;
+import io.github.intisy.ai.shared.routing.QuotaBar;
+import io.github.intisy.ai.shared.routing.QuotaProvider;
 import io.github.intisy.ai.shared.spi.http.HttpRequest;
 import io.github.intisy.ai.shared.spi.http.HttpResponse;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,8 +34,17 @@ import java.util.regex.Pattern;
  * {@code io.github.intisy.ai.jvm.ProviderRegistry} in ai-java. This class (and this whole
  * module) is deliberately plain: no gson, no reflection — hand-rolled JSON string building only,
  * matching the brief ("transpilability is a Task-5 concern, keep it plain").
+ *
+ * <p>Also implements the typed capability SPI ({@link ConfigurableProvider}/
+ * {@link ModelCatalogProvider}/{@link QuotaProvider}) added by core-proxy's capability-SPI task,
+ * replacing what would otherwise be {@code /v1/config}/{@code /v1/models}/{@code /v1/quota} URL
+ * branches inside {@link #handle}. stub is the ONE provider allowed to hardcode canned example
+ * data (models, config schema, quota bars) — everything below is illustrative, not derived from a
+ * real upstream. {@code OAuthProvider} is deliberately NOT implemented: stub's
+ * {@code loginFlow} (src/driver.ts) completes instantly with no real authorize/exchange
+ * round-trip, so there is no OAuth capability to expose.
  */
-public final class StubProvider implements Provider {
+public final class StubProvider implements Provider, ConfigurableProvider, ModelCatalogProvider, QuotaProvider {
 
     public static final String DEFAULT_RESPONSE_TEXT = "stub response";
     private static final String DEFAULT_MODEL = "stub-model";
@@ -50,6 +70,56 @@ public final class StubProvider implements Provider {
         resp.headers.put("content-type", "application/json");
         resp.body = buildCannedBody(model, DEFAULT_RESPONSE_TEXT);
         return resp;
+    }
+
+    // ---- ConfigurableProvider -- delegates to StubConfig, which threads ctx.store (the server's
+    // injected Store) rather than self-assembling a FileStore. ------------------------------------
+
+    @Override
+    public ConfigSchema configSchema(HandlerCtx ctx) {
+        return StubConfig.schema();
+    }
+
+    @Override
+    public Map<String, Object> getConfigValues(HandlerCtx ctx) {
+        return StubConfig.values(ctx);
+    }
+
+    @Override
+    public Map<String, Object> putConfigValues(HandlerCtx ctx, Map<String, Object> values) {
+        return StubConfig.put(ctx, values);
+    }
+
+    // ---- ModelCatalogProvider -- reuses buildModels's own id/name source (modelEntries), never a
+    // second hardcoded model list; context/output windows are canned (stub has no real backend to
+    // query them from). -----------------------------------------------------------------------------
+
+    private static final int MODEL_CATALOG_COUNT = 3; // mirrors src/index.ts's model_count default
+    private static final int DEFAULT_CONTEXT = 200000;
+    private static final int DEFAULT_OUTPUT = 64000;
+
+    @Override
+    public List<ModelInfo> models(HandlerCtx ctx) {
+        String[][] entries = modelEntries(MODEL_CATALOG_COUNT);
+        List<ModelInfo> out = new ArrayList<>(entries.length);
+        for (String[] entry : entries) {
+            out.add(new ModelInfo(entry[0], entry[1], DEFAULT_CONTEXT, DEFAULT_OUTPUT));
+        }
+        return out;
+    }
+
+    // ---- QuotaProvider -- canned demo bars: stub never enforces real rate limits (every request
+    // is served unconditionally, modulo the config's artificial fail_rate), so these illustrate the
+    // dashboard's quota UI rather than reflect real per-account usage. ------------------------------
+
+    @Override
+    public List<AccountQuota> quota(HandlerCtx ctx) {
+        return Arrays.asList(
+                new AccountQuota("stub-demo-1", "demo-1@example.com", "active",
+                        Arrays.asList(new QuotaBar("Stub demo pool", 0.92, "n/a"))),
+                new AccountQuota("stub-demo-2", "demo-2@example.com", "active",
+                        Arrays.asList(new QuotaBar("Stub demo pool", 0.47, "n/a")))
+        );
     }
 
     /**
@@ -88,22 +158,32 @@ public final class StubProvider implements Provider {
 
     /**
      * Port of {@code src/driver.ts}'s {@code buildModels}: first three fixed ids/names, then
-     * {@code stub-N} (1-based) beyond, clamped to at least one model.
+     * {@code stub-N} (1-based) beyond, clamped to at least one model. Built from
+     * {@link #modelEntries}, the single ordered id/name source this method AND
+     * {@link #models(HandlerCtx)} (the typed {@code ModelCatalogProvider} capability) both
+     * derive from -- never two separately hardcoded model lists.
      */
     public static String buildModels(int count) {
-        int safe = Math.max(1, count);
+        String[][] entries = modelEntries(count);
         StringBuilder sb = new StringBuilder("{");
-        for (int i = 0; i < safe; i++) {
+        for (int i = 0; i < entries.length; i++) {
             if (i > 0) sb.append(",");
-            String id;
-            String name;
-            if (i == 0) { id = "stub-model"; name = "Stub Default"; }
-            else if (i == 1) { id = "stub-pro"; name = "Stub Pro"; }
-            else if (i == 2) { id = "stub-fast"; name = "Stub Fast"; }
-            else { id = "stub-" + (i + 1); name = "Stub " + (i + 1); }
-            sb.append(quote(id)).append(":{\"name\":").append(quote(name)).append("}");
+            sb.append(quote(entries[i][0])).append(":{\"name\":").append(quote(entries[i][1])).append("}");
         }
         return sb.append("}").toString();
+    }
+
+    /** Ordered {@code {id, name}} pairs, clamped to at least one entry. See {@link #buildModels}. */
+    private static String[][] modelEntries(int count) {
+        int safe = Math.max(1, count);
+        String[][] entries = new String[safe][2];
+        for (int i = 0; i < safe; i++) {
+            if (i == 0) { entries[i][0] = "stub-model"; entries[i][1] = "Stub Default"; }
+            else if (i == 1) { entries[i][0] = "stub-pro"; entries[i][1] = "Stub Pro"; }
+            else if (i == 2) { entries[i][0] = "stub-fast"; entries[i][1] = "Stub Fast"; }
+            else { entries[i][0] = "stub-" + (i + 1); entries[i][1] = "Stub " + (i + 1); }
+        }
+        return entries;
     }
 
     private static String sse(String event, String dataJson) {
@@ -151,8 +231,10 @@ public final class StubProvider implements Provider {
 
     // Escapes just enough (backslash, quote, control chars) for this provider's own canned
     // strings -- model ids and the fixed response text never contain anything exotic, but this
-    // keeps the JSON well-formed if a caller ever passes an unusual model string.
-    private static String quote(String s) {
+    // keeps the JSON well-formed if a caller ever passes an unusual model string. Package-private
+    // (not private) so StubConfig reuses this same escaper for config-value persistence instead
+    // of hand-rolling a second one.
+    static String quote(String s) {
         StringBuilder sb = new StringBuilder(s.length() + 2);
         sb.append('"');
         for (int i = 0; i < s.length(); i++) {
