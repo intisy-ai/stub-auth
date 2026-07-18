@@ -1,5 +1,11 @@
 package io.github.intisy.ai.stub;
 
+import io.github.intisy.ai.ir.Block;
+import io.github.intisy.ai.ir.IrResponse;
+import io.github.intisy.ai.ir.IrStopReason;
+import io.github.intisy.ai.ir.IrUsage;
+import io.github.intisy.ai.ir.TextBlock;
+import io.github.intisy.ai.ir.translators.anthropic.AnthropicTranslator;
 import io.github.intisy.ai.shared.routing.AccountQuota;
 import io.github.intisy.ai.shared.routing.ConfigSchema;
 import io.github.intisy.ai.shared.routing.ConfigurableProvider;
@@ -14,6 +20,7 @@ import io.github.intisy.ai.shared.spi.http.HttpResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,6 +155,49 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
      */
     public static String buildCannedBody(String model, String responseText) {
         return jsonBody(model, stubText(model, responseText));
+    }
+
+    /**
+     * SP-2 canary: the same canned reply as {@link #buildCannedBody}, but produced by building an
+     * {@link IrResponse} and encoding it through core-ir's {@link AnthropicTranslator} instead of
+     * hand-writing the Anthropic JSON. Used by {@link StubHandleOrchestrator#handle} (the
+     * orchestrator reused by both the JVM unit tests and the TeaVM JS export {@code driver.ts}
+     * actually calls) -- {@link #handle} itself keeps using {@link #buildCannedBody} so the raw
+     * ai-java {@code Provider} ServiceLoader path (its dropped-in jar has no :ir classes on its
+     * classpath today) is unaffected. {@code routingJson} is the same
+     * {@code io.github.intisy.ai.shared.spi.JsonCodec} every other caller here already threads in
+     * (GsonJsonCodec on the JVM, SimpleJsonCodec from the TeaVM export); {@link RoutingJsonCodecAdapter}
+     * bridges it to core-ir's own {@code JsonCodec} SPI, which is structurally identical but a
+     * different interface.
+     */
+    public static String buildCannedBodyViaIr(io.github.intisy.ai.shared.spi.JsonCodec routingJson, String model, String responseText) {
+        io.github.intisy.ai.ir.spi.JsonCodec irJson = new RoutingJsonCodecAdapter(routingJson);
+        IrResponse ir = new IrResponse();
+        ir.id = "msg_stub_0001";
+        ir.model = model;
+        ir.content = Collections.<Block>singletonList(new TextBlock(stubText(model, responseText)));
+        ir.stopReason = IrStopReason.END_TURN;
+        ir.usage = new IrUsage(1, 12, null, null);
+        return new AnthropicTranslator(irJson).encodeResponse(ir);
+    }
+
+    /** Adapts the routing SPI's {@code JsonCodec} (parse/stringify) to core-ir's own, same-shaped one. */
+    static final class RoutingJsonCodecAdapter implements io.github.intisy.ai.ir.spi.JsonCodec {
+        private final io.github.intisy.ai.shared.spi.JsonCodec delegate;
+
+        RoutingJsonCodecAdapter(io.github.intisy.ai.shared.spi.JsonCodec delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Object parse(String json) {
+            return delegate.parse(json);
+        }
+
+        @Override
+        public String stringify(Object value) {
+            return delegate.stringify(value);
+        }
     }
 
     public static String buildStreamBody(String model, String responseText) {

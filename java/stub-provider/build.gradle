@@ -6,6 +6,16 @@ dependencies {
     // io/github/intisy/ai/shared/routing/Provider.class (or any other :routing class) inside it.
     compileOnly project(":routing")
 
+    // core-ir's IR types + AnthropicTranslator (SP-2 canary): unlike :routing, no host provides
+    // these today, so this is a normal `implementation` dependency (not compileOnly) -- it stays
+    // on :stub-provider's own runtime classpath and propagates to :stub-teavm's runtime classpath
+    // (java-library's implementation-visibility rule), which is what the TeaVM transpile step
+    // needs. StubProvider.handle() (the raw ai-java ServiceLoader Provider path, only exercised by
+    // StubProviderIntegrationTest's dropped-in stub-provider.jar) deliberately still uses the OLD
+    // hand-rolled buildCannedBody -- bundling :ir into that thin jar (or teaching ai-java about
+    // core-ir) is out of scope for this canary, so that path is left untouched.
+    implementation project(":ir")
+
     // Test-only: constructs a real AiJava/ProviderRegistry (via the includeBuild composite in
     // ../settings.gradle) to prove this module's OWN built jar dynamically loads and routes a
     // request end to end. io.github.intisy:jvm's api dependencies (:routing/:accounts) come
