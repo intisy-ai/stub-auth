@@ -48,7 +48,7 @@ class StubProviderCapabilityTest {
     @Test
     void getConfigValues_returnsDefaultsWhenStoreEmpty() {
         Map<String, Object> values = new StubProvider().getConfigValues(ctxWith(new FakeStore()));
-        assertEquals("Hello from stub-auth — the core-auth pipeline works end to end.", values.get("response_text"));
+        assertEquals("Hello from stub-auth: the core-auth pipeline works end to end.", values.get("response_text"));
         assertEquals(0L, values.get("latency_ms"));
         assertEquals(0.0, (double) values.get("fail_rate"));
         assertEquals("hybrid", values.get("account_selection_strategy"));
@@ -144,6 +144,40 @@ class StubProviderCapabilityTest {
         HttpResponse resp = provider.handle(req, ctxWith(null));
         assertEquals(200, resp.status);
         assertTrue(resp.body.contains("\"id\":\"msg_stub_0001\""));
+    }
+
+    @Test
+    void handle_servesConfiguredResponseText_notTheHardcodedDefault() throws Exception {
+        // Root-cause proof: handle() must read response_text through the SAME seam
+        // ConfigurableProvider uses (StubConfig.values -> ctx.store), not DEFAULT_RESPONSE_TEXT.
+        FakeStore store = new FakeStore();
+        StubProvider provider = new StubProvider();
+        Map<String, Object> incoming = new LinkedHashMap<>();
+        incoming.put("response_text", "custom text");
+        provider.putConfigValues(ctxWith(store), incoming);
+
+        HttpRequest req = new HttpRequest();
+        req.method = "POST";
+        req.url = "/v1/messages";
+        req.body = "{\"model\":\"claude-opus-4-ignored\"}";
+        HttpResponse resp = provider.handle(req, ctxWith(store));
+
+        assertEquals(200, resp.status);
+        assertTrue(resp.body.contains("\"text\":\"custom text (served by claude-opus-4-ignored)\""),
+                "expected the configured response_text to be served, got: " + resp.body);
+    }
+
+    @Test
+    void handle_fallsBackToDefault_whenStoreEmpty() throws Exception {
+        StubProvider provider = new StubProvider();
+        HttpRequest req = new HttpRequest();
+        req.method = "POST";
+        req.url = "/v1/messages";
+        req.body = "{\"model\":\"stub-model\"}";
+        HttpResponse resp = provider.handle(req, ctxWith(new FakeStore()));
+
+        assertTrue(resp.body.contains(StubConfig.schema().groups.get(0).fields.get(0).defaultValue + " (served by stub-model)"),
+                "expected the StubConfig default response_text when nothing is persisted, got: " + resp.body);
     }
 
     private static HandlerCtx ctxWith(Store store) {

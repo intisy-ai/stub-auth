@@ -51,7 +51,7 @@ public final class StubProviderJs {
 
     private static StubHandleOrchestrator.OrchestratorConfig parseConfig(JsonCodec json, String configJson) {
         StubHandleOrchestrator.OrchestratorConfig cfg = new StubHandleOrchestrator.OrchestratorConfig();
-        cfg.responseText = "Hello from stub-auth — the core-auth pipeline works end to end.";
+        cfg.responseText = "Hello from stub-auth: the core-auth pipeline works end to end.";
         Object parsed = configJson != null ? json.parse(configJson) : null;
         if (parsed instanceof Map) {
             Map<?, ?> m = (Map<?, ?>) parsed;
