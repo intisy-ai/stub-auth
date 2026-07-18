@@ -25,9 +25,10 @@ import java.util.regex.Pattern;
  * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
  * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
  * 12), and the same {@code responseText + " (served by " + model + ")"} text shape. The JVM
- * {@link #handle} passes {@link #DEFAULT_RESPONSE_TEXT} since there is no config-loading seam on
- * this side of the boundary; callers with a real response text use {@link #buildCannedBody} /
- * {@link #buildStreamBody} directly.
+ * {@link #handle} reads the configured {@code response_text} via {@link StubConfig#values(HandlerCtx)}
+ * (which threads the injected {@code ctx.store}, never a self-assembled FileStore), falling back to
+ * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank; callers with a real response text use
+ * {@link #buildCannedBody} / {@link #buildStreamBody} directly.
  *
  * <p>Registered via {@code META-INF/services/io.github.intisy.ai.shared.routing.Provider} so a
  * JVM host discovers it purely through {@code ServiceLoader} — see
@@ -63,13 +64,24 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     @Override
     public HttpResponse handle(HttpRequest req, HandlerCtx ctx) throws Exception {
         String model = resolveModel(req, ctx);
+        String responseText = resolveResponseText(ctx);
 
         HttpResponse resp = new HttpResponse();
         resp.status = 200;
         resp.headers = new HashMap<>();
         resp.headers.put("content-type", "application/json");
-        resp.body = buildCannedBody(model, DEFAULT_RESPONSE_TEXT);
+        resp.body = buildCannedBody(model, responseText);
         return resp;
+    }
+
+    // Reads the configured response_text through the same seam ConfigurableProvider uses
+    // (StubConfig.values -> ctx.store), falling back to DEFAULT_RESPONSE_TEXT when unset/blank.
+    private static String resolveResponseText(HandlerCtx ctx) {
+        Object configured = StubConfig.values(ctx).get("response_text");
+        if (configured instanceof String && !((String) configured).trim().isEmpty()) {
+            return (String) configured;
+        }
+        return DEFAULT_RESPONSE_TEXT;
     }
 
     // ---- ConfigurableProvider -- delegates to StubConfig, which threads ctx.store (the server's

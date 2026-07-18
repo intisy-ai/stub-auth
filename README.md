@@ -59,7 +59,7 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 ```json
 {
   "logging": true,
-  "response_text": "Hello from stub-auth — the core-auth pipeline works end to end.",
+  "response_text": "Hello from stub-auth: the core-auth pipeline works end to end.",
   "model_count": 3,
   "latency_ms": 0,
   "fail_rate": 0,
@@ -70,7 +70,7 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 | Key | Default |
 | --- | --- |
 | `logging` | `true` |
-| `response_text` | `"Hello from stub-auth — the core-auth pipeline works end to end."` |
+| `response_text` | `"Hello from stub-auth: the core-auth pipeline works end to end."` |
 | `model_count` | `3` |
 | `latency_ms` | `0` |
 | `fail_rate` | `0` |

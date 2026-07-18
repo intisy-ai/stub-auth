@@ -13,7 +13,7 @@ describe("stub driver.handle (Java) regression", () => {
     const b = JSON.parse(await res.text());
     expect(b.id).toBe("msg_stub_0001");
     expect(b.model).toBe("stub-pro");
-    expect(b.content[0].text).toBe("Hello from stub-auth — the core-auth pipeline works end to end. (served by stub-pro)");
+    expect(b.content[0].text).toBe("Hello from stub-auth: the core-auth pipeline works end to end. (served by stub-pro)");
     expect(b.usage).toEqual({ input_tokens: 1, output_tokens: 12 });
   });
 

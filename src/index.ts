@@ -10,7 +10,7 @@ import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
 // Register config defaults BEFORE the CLI guard so `config schema` sees them (no write).
 defineConfig("stub-auth", {
   logging: true,
-  response_text: "Hello from stub-auth — the core-auth pipeline works end to end.",
+  response_text: "Hello from stub-auth: the core-auth pipeline works end to end.",
   model_count: 3,
   latency_ms: 0,
   fail_rate: 0,

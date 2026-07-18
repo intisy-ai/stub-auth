@@ -36,7 +36,7 @@ final class StubConfig {
 
     // Matches src/index.ts's defineConfig("stub-auth", {...}) defaults exactly.
     private static final String DEFAULT_RESPONSE_TEXT =
-            "Hello from stub-auth — the core-auth pipeline works end to end.";
+            "Hello from stub-auth: the core-auth pipeline works end to end.";
     private static final long DEFAULT_LATENCY_MS = 0;
     private static final double DEFAULT_FAIL_RATE = 0;
     private static final String DEFAULT_STRATEGY = "hybrid";
