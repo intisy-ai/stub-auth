@@ -1,7 +1,9 @@
 package io.github.intisy.ai.stub;
 
+import io.github.intisy.ai.ir.translators.anthropic.AnthropicTranslator;
 import io.github.intisy.ai.jvm.AiJava;
 import io.github.intisy.ai.jvm.Storage;
+import io.github.intisy.ai.jvm.backend.json.GsonJsonCodec;
 import io.github.intisy.ai.shared.routing.RoutingProfile;
 import io.github.intisy.ai.shared.spi.Store;
 import io.github.intisy.ai.shared.spi.http.HttpRequest;
@@ -96,6 +98,12 @@ class StubProviderIntegrationTest {
 
     private static RoutingProfile profile() {
         RoutingProfile p = new RoutingProfile();
+        // Post-T4 the provider is IR-native (no app-wire handle()), so the front-door must supply
+        // an app<->IR translator -- exactly as the real anthropicProfile does. With it set, the
+        // Router decodes the inbound Anthropic wire to IR, calls the provider's handleIr, and
+        // encodes the IrResponse back to wire. Without it the Router would hit Provider's throwing
+        // handle() default.
+        p.translator = new AnthropicTranslator(new StubProvider.RoutingJsonCodecAdapter(new GsonJsonCodec()));
         p.configFile = CONFIG_FILE;
         p.routingKey = "providerRouting";
         p.tierSourceProvider = "stub";

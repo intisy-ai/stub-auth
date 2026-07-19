@@ -16,13 +16,10 @@ import io.github.intisy.ai.shared.routing.ModelInfo;
 import io.github.intisy.ai.shared.routing.Provider;
 import io.github.intisy.ai.shared.routing.QuotaBar;
 import io.github.intisy.ai.shared.routing.QuotaProvider;
-import io.github.intisy.ai.shared.spi.http.HttpRequest;
-import io.github.intisy.ai.shared.spi.http.HttpResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,12 +27,14 @@ import java.util.Map;
  * Java port of stub-auth's TS driver ({@code src/driver.ts}). Ported field-for-field from
  * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
  * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
- * 12), and the same {@code responseText + " (served by " + model + ")"} text shape. {@link #handle}
- * (SP-3 T2) is a thin wrapper over {@link #handleIr}, which reads the configured
+ * 12), and the same {@code responseText + " (served by " + model + ")"} text shape.
+ * {@link #handleIr} (SP-3/T4) is the sole serving path: it reads the configured
  * {@code response_text} via {@link StubConfig#values(HandlerCtx)} (which threads the injected
  * {@code ctx.store}, never a self-assembled FileStore), falling back to
  * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank; callers with a real response text use
- * {@link #buildCannedBody} / {@link #buildStreamBody} directly.
+ * {@link #buildCannedBody} / {@link #buildStreamBody} directly. There is no app-wire
+ * {@code handle()} override -- the front-door owns app&lt;-&gt;IR translation, so this provider
+ * inherits {@code Provider}'s throwing {@code handle} default and carries zero wire-format code.
  *
  * <p>Registered via {@code META-INF/services/io.github.intisy.ai.shared.routing.Provider} so a
  * JVM host discovers it purely through {@code ServiceLoader} — see
@@ -46,7 +45,7 @@ import java.util.Map;
  * <p>Also implements the typed capability SPI ({@link ConfigurableProvider}/
  * {@link ModelCatalogProvider}/{@link QuotaProvider}) added by core-proxy's capability-SPI task,
  * replacing what would otherwise be {@code /v1/config}/{@code /v1/models}/{@code /v1/quota} URL
- * branches inside {@link #handle}. stub is the ONE provider allowed to hardcode canned example
+ * branches on the app-wire path. stub is the ONE provider allowed to hardcode canned example
  * data (models, config schema, quota bars) — everything below is illustrative, not derived from a
  * real upstream. {@code OAuthProvider} is deliberately NOT implemented: stub's
  * {@code loginFlow} (src/driver.ts) completes instantly with no real authorize/exchange
@@ -63,33 +62,13 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * SP-3 T2: a thin wrapper over {@link #handleIr} -- decodes the inbound Anthropic wire into an
-     * {@link IrRequest}, calls {@link #handleIr}, and encodes its {@link IrResponse} back to wire
-     * JSON, both via {@link AnthropicTranslator}. {@link StubJsonCodec} (not {@code GsonJsonCodec},
-     * test-only, nor core-ir's own {@code SimpleJsonCodec}, pinned to Java 17 in the {@code :teavm}
-     * module) is the {@code JsonCodec} this needs, since {@link HandlerCtx} carries none and this
-     * module stays on Java 8.
-     */
-    @Override
-    public HttpResponse handle(HttpRequest req, HandlerCtx ctx) throws Exception {
-        AnthropicTranslator translator = new AnthropicTranslator(new StubJsonCodec());
-        IrRequest request = translator.decodeRequest(req != null && req.body != null ? req.body : "{}");
-        IrResponse response = handleIr(request, ctx);
-
-        HttpResponse resp = new HttpResponse();
-        resp.status = 200;
-        resp.headers = new HashMap<>();
-        resp.headers.put("content-type", "application/json");
-        resp.body = translator.encodeResponse(response);
-        return resp;
-    }
-
-    /**
-     * IR-native entry point (SP-3 T2): model resolution mirrors {@code ctx.model} then
-     * {@code request.model} then {@link #DEFAULT_MODEL}, the same precedence {@link #handle} used
-     * before this refactor -- just read off the already-decoded {@link IrRequest} instead of a
-     * regex over the raw wire body. Stub never streams from this entry point: it is a canned
-     * example with no per-token generation, so a single {@link IrResponse} covers every test case.
+     * IR-native entry point (SP-3/T4): model resolution is {@code ctx.model} then
+     * {@code request.model} then {@link #DEFAULT_MODEL}, read off the already-decoded
+     * {@link IrRequest} -- the front-door (Router/proxy server) owns app&lt;-&gt;IR translation, so
+     * this provider has no app-wire {@code handle()} and no wire-format code at all (it inherits
+     * {@code Provider}'s throwing {@code handle} default). Stub never streams from this entry
+     * point: it is a canned example with no per-token generation, so a single {@link IrResponse}
+     * covers every test case.
      */
     @Override
     public IrResponse handleIr(IrRequest request, HandlerCtx ctx) {

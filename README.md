@@ -5,10 +5,10 @@
 [![CI](https://img.shields.io/github/actions/workflow/status/intisy-ai/stub-auth/publish.yml)](https://github.com/intisy-ai/stub-auth/actions)
 
 A stub AI-provider driver for [`core-auth`](https://github.com/intisy-ai/core-auth). It returns canned,
-valid Anthropic Messages API responses (JSON or SSE) so the auth pipeline — discovery, routing, and
-the per-app adapters in Claude Code and OpenCode — can be validated end to end without contacting any
-real provider. It is also the reference **example** for building new provider plugins: define
-`{ id, label, models, handle }`, let core-auth do the rest.
+valid responses as canonical IR (the front-door encodes them to the app's Anthropic wire format, JSON or
+SSE) so the auth pipeline — discovery, routing, and the per-app adapters in Claude Code and OpenCode — can
+be validated end to end without contacting any real provider. It is also the reference **example** for
+building new provider plugins: define `{ id, label, models, handleIr }`, let core-auth do the rest.
 
 ## Under-the-Hood Architecture
 
@@ -16,9 +16,9 @@ real provider. It is also the reference **example** for building new provider pl
 flowchart LR
   A[cc / oc chat] --> B[core-auth / loader proxy]
   B --> C{active provider}
-  C -->|stub| D[driver.handle]
-  D -->|stream?| E[canned SSE]
-  D -->|else| F[canned JSON]
+  C -->|stub| D[driver.handleIr]
+  D -->|stream?| E[canned IR event stream]
+  D -->|else| F[canned IrResponse]
   E --> A
   F --> A
 ```
@@ -26,9 +26,9 @@ flowchart LR
 ## Structure
 
 - `src/`
-  - `src/driver.ts` — the provider: `id`/`label`/`models` + `handle()` returning the canned response.
+  - `src/driver.ts` — the provider: `id`/`label`/`models` + `handleIr()` returning the canned IR response.
   - `src/index.ts` — OpenCode entry (`defineProvider(driver).opencode`).
-  - `src/handler.ts` — Claude entry (the named `handle` the loader proxy calls).
+  - `src/handler.ts` — Claude entry (exposes the IR-native `handleIr` the loader proxy calls).
   - `src/commands.ts` — cross-app slash-commands (the reference example of the command framework).
   - `core-auth/`, `core/` — git submodules (auth engine; shared config/logging/commands), bundled in.
 - `dist/`

@@ -1,6 +1,7 @@
-// T3c-2: proves stub-auth's handleIr now throws the canonical typed transport error
-// (core-proxy's HandleIrError) instead of a plain Error on a non-2xx upstream outcome, and
-// that the legacy handle() wrapper still reconstructs the identical Response from it.
+// T3c-2: proves stub-auth's handleIr throws the canonical typed transport error
+// (core-proxy's HandleIrError) instead of a plain Error on a non-2xx upstream outcome. The
+// front-door reconstructs the Response from that typed error, so this provider carries no
+// app-wire encoding of its own to test here.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -31,7 +32,7 @@ afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe("stub driver handleIr / handle -- typed transport error", () => {
+describe("stub driver handleIr -- typed transport error", () => {
   it("handleIr throws a HandleIrError carrying the orchestrator's real status/headers/body", async () => {
     await expect(driver.handleIr({ model: "stub-pro", stream: false }, {})).rejects.toSatisfy((err: any) => {
       expect(err).toBeInstanceOf(HandleIrError);
@@ -42,14 +43,5 @@ describe("stub driver handleIr / handle -- typed transport error", () => {
       expect(err.retryAfterMs).toBeUndefined();
       return true;
     });
-  });
-
-  it("handle() reconstructs a byte-identical 529 Response from the typed error", async () => {
-    const req = new Request("https://x/v1/messages", { method: "POST", body: JSON.stringify({ model: "stub-pro" }) });
-    const res = await driver.handle(req, {});
-    expect(res.status).toBe(529);
-    expect(res.headers.get("content-type")).toBe("application/json");
-    const body = await res.json();
-    expect(body).toEqual({ type: "error", error: { type: "overloaded_error", message: "Stub overloaded (fail_rate)" } });
   });
 });
