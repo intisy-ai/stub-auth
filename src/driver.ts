@@ -6,7 +6,14 @@
 import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
+import { HandleIrError } from "../core-proxy/dist/index.js";
 import stubModelsSeed from "./generated/stub-models.json";
+
+// Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
+// this bundled driver import it from here, not straight from core-proxy/dist -- esbuild inlines
+// a separate copy of the class per bundle, so importing from two different bundles gives two
+// different (non-instanceof-compatible) classes.
+export { HandleIrError };
 
 // Account rotation lives in core-auth (selection.ts); the strategy is just config.
 const accountManager = new AccountManager("stub", { selection: getConfigValue("stub-auth", "account_selection_strategy") || "hybrid" });
@@ -44,9 +51,14 @@ async function handleIr(ir, ctx) {
   const configJson = JSON.stringify({ ...responseConfig, streaming: false });
   const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
 
+  // T3c-2: carry the orchestrator's real transport outcome through the typed error contract
+  // (core-proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
+  // reconstruct the real status/headers/body and route it through the same rate-limit/fallback
+  // logic a normal response would get. The only non-200 status this orchestrator ever returns is
+  // 529 (the fail_rate roll) -- no retryAfterMs is included since fail_rate is a synthetic dice
+  // roll with no reset-time semantics to derive one from.
   if (decision.status !== 200) {
-    const errorBody = JSON.parse(decision.body);
-    throw new Error((errorBody && errorBody.error && errorBody.error.message) || "stub handleIr failed");
+    throw new HandleIrError({ status: decision.status, headers: decision.headers, body: decision.body });
   }
 
   const body = JSON.parse(decision.body);
@@ -149,6 +161,12 @@ async function handle(request, ctx) {
     }
     return new Response(encodeIrResponseToWire(result), { status: 200, headers: { "content-type": "application/json" } });
   } catch (err) {
+    if (err instanceof HandleIrError) {
+      // Reconstruct the real Response from the typed error's status/headers/body verbatim, so
+      // this legacy wire entrypoint stays byte-identical to what handleIr actually decided.
+      return new Response(err.body, { status: err.status, headers: err.headers || {} });
+    }
+    // Unexpected/non-typed throw -- keep the old degrade-to-529 shape unchanged.
     const message = (err && err.message) || "Stub overloaded (fail_rate)";
     return new Response(
       JSON.stringify({ type: "error", error: { type: "overloaded_error", message } }),
