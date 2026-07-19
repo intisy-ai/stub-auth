@@ -1,5 +1,12 @@
 package io.github.intisy.ai.stub;
 
+import io.github.intisy.ai.ir.Block;
+import io.github.intisy.ai.ir.IrRequest;
+import io.github.intisy.ai.ir.IrResponse;
+import io.github.intisy.ai.ir.IrStopReason;
+import io.github.intisy.ai.ir.IrUsage;
+import io.github.intisy.ai.ir.TextBlock;
+import io.github.intisy.ai.ir.translators.anthropic.AnthropicTranslator;
 import io.github.intisy.ai.shared.routing.AccountQuota;
 import io.github.intisy.ai.shared.routing.ConfigSchema;
 import io.github.intisy.ai.shared.routing.ConfigurableProvider;
@@ -9,26 +16,25 @@ import io.github.intisy.ai.shared.routing.ModelInfo;
 import io.github.intisy.ai.shared.routing.Provider;
 import io.github.intisy.ai.shared.routing.QuotaBar;
 import io.github.intisy.ai.shared.routing.QuotaProvider;
-import io.github.intisy.ai.shared.spi.http.HttpRequest;
-import io.github.intisy.ai.shared.spi.http.HttpResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Java port of stub-auth's TS driver ({@code src/driver.ts}). Ported field-for-field from
  * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
  * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
- * 12), and the same {@code responseText + " (served by " + model + ")"} text shape. The JVM
- * {@link #handle} reads the configured {@code response_text} via {@link StubConfig#values(HandlerCtx)}
- * (which threads the injected {@code ctx.store}, never a self-assembled FileStore), falling back to
+ * 12), and the same {@code responseText + " (served by " + model + ")"} text shape.
+ * {@link #handleIr} (SP-3/T4) is the sole serving path: it reads the configured
+ * {@code response_text} via {@link StubConfig#values(HandlerCtx)} (which threads the injected
+ * {@code ctx.store}, never a self-assembled FileStore), falling back to
  * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank; callers with a real response text use
- * {@link #buildCannedBody} / {@link #buildStreamBody} directly.
+ * {@link #buildCannedBody} / {@link #buildStreamBody} directly. There is no app-wire
+ * {@code handle()} override -- the front-door owns app&lt;-&gt;IR translation, so this provider
+ * inherits {@code Provider}'s throwing {@code handle} default and carries zero wire-format code.
  *
  * <p>Registered via {@code META-INF/services/io.github.intisy.ai.shared.routing.Provider} so a
  * JVM host discovers it purely through {@code ServiceLoader} — see
@@ -39,7 +45,7 @@ import java.util.regex.Pattern;
  * <p>Also implements the typed capability SPI ({@link ConfigurableProvider}/
  * {@link ModelCatalogProvider}/{@link QuotaProvider}) added by core-proxy's capability-SPI task,
  * replacing what would otherwise be {@code /v1/config}/{@code /v1/models}/{@code /v1/quota} URL
- * branches inside {@link #handle}. stub is the ONE provider allowed to hardcode canned example
+ * branches on the app-wire path. stub is the ONE provider allowed to hardcode canned example
  * data (models, config schema, quota bars) — everything below is illustrative, not derived from a
  * real upstream. {@code OAuthProvider} is deliberately NOT implemented: stub's
  * {@code loginFlow} (src/driver.ts) completes instantly with no real authorize/exchange
@@ -50,28 +56,35 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     public static final String DEFAULT_RESPONSE_TEXT = "stub response";
     private static final String DEFAULT_MODEL = "stub-model";
 
-    // Minimal, dependency-free extraction of the top-level "model" string field out of the
-    // request JSON body -- good enough for the canned proof this task requires (no nested
-    // objects/arrays need to be parsed; a real JSON library would be overkill for a hand-rolled,
-    // TeaVM-eligible provider jar).
-    private static final Pattern MODEL_FIELD = Pattern.compile("\"model\"\\s*:\\s*\"([^\"]*)\"");
-
     @Override
     public String id() {
         return "stub";
     }
 
+    /**
+     * IR-native entry point (SP-3/T4): model resolution is {@code ctx.model} then
+     * {@code request.model} then {@link #DEFAULT_MODEL}, read off the already-decoded
+     * {@link IrRequest} -- the front-door (Router/proxy server) owns app&lt;-&gt;IR translation, so
+     * this provider has no app-wire {@code handle()} and no wire-format code at all (it inherits
+     * {@code Provider}'s throwing {@code handle} default). Stub never streams from this entry
+     * point: it is a canned example with no per-token generation, so a single {@link IrResponse}
+     * covers every test case.
+     */
     @Override
-    public HttpResponse handle(HttpRequest req, HandlerCtx ctx) throws Exception {
-        String model = resolveModel(req, ctx);
+    public IrResponse handleIr(IrRequest request, HandlerCtx ctx) {
+        String model = resolveModelForIr(request, ctx);
         String responseText = resolveResponseText(ctx);
+        return buildIrResponse(model, responseText);
+    }
 
-        HttpResponse resp = new HttpResponse();
-        resp.status = 200;
-        resp.headers = new HashMap<>();
-        resp.headers.put("content-type", "application/json");
-        resp.body = buildCannedBody(model, responseText);
-        return resp;
+    private static String resolveModelForIr(IrRequest request, HandlerCtx ctx) {
+        if (ctx != null && ctx.model != null && !ctx.model.isEmpty()) {
+            return ctx.model;
+        }
+        if (request != null && request.model != null && !request.model.isEmpty()) {
+            return request.model;
+        }
+        return DEFAULT_MODEL;
     }
 
     // Reads the configured response_text through the same seam ConfigurableProvider uses
@@ -135,19 +148,68 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * The transpilable "core" this provider's JVM {@link #handle} calls, ALSO reused verbatim by
-     * {@code StubProviderJs} (the {@code :stub-teavm} TeaVM export, Task 5's js half of the
-     * shared-Java model) once {@code model} has already been resolved — pure {@code String}/
-     * {@code StringBuilder} construction, no gson/java.net/nio/reflection/threads/{@code
-     * System.getenv}, so TeaVM compiles it unchanged. {@code model} resolution itself stays
-     * split per caller: the JVM path resolves it via {@link #resolveModel} (ctx then a regex read
-     * of the request body); the JS path resolves it via {@code SimpleJsonCodec} (core-proxy's
-     * {@code :teavm} js-base) instead of duplicating a second JSON reader here — this method is
-     * the shared seam between the two, taking an already-resolved {@code model} so neither side's
-     * JSON-reading choice leaks into the other.
+     * The transpilable "core" reused verbatim by {@code StubProviderJs} (the {@code :stub-teavm}
+     * TeaVM export, Task 5's js half of the shared-Java model) once {@code model} has already been
+     * resolved — pure {@code String}/{@code StringBuilder} construction, no gson/java.net/nio/
+     * reflection/threads/{@code System.getenv}, so TeaVM compiles it unchanged. {@code model}
+     * resolution itself stays split per caller: {@link #handleIr} resolves it off the decoded
+     * {@link IrRequest} (ctx then {@code request.model} then the fixed default); the JS path
+     * resolves it via {@code SimpleJsonCodec} (core-proxy's {@code :teavm} js-base) instead of
+     * duplicating a second JSON reader here — this method is the shared seam between the two,
+     * taking an already-resolved {@code model} so neither side's JSON-reading choice leaks into the
+     * other.
      */
     public static String buildCannedBody(String model, String responseText) {
         return jsonBody(model, stubText(model, responseText));
+    }
+
+    /**
+     * The canned reply as an {@link IrResponse}, shared by {@link #handleIr} and
+     * {@link #buildCannedBodyViaIr} so there is exactly one place that assembles it.
+     */
+    public static IrResponse buildIrResponse(String model, String responseText) {
+        IrResponse ir = new IrResponse();
+        ir.id = "msg_stub_0001";
+        ir.model = model;
+        ir.content = Collections.<Block>singletonList(new TextBlock(stubText(model, responseText)));
+        ir.stopReason = IrStopReason.END_TURN;
+        ir.usage = new IrUsage(1, 12, null, null);
+        return ir;
+    }
+
+    /**
+     * SP-2 canary: the same canned reply as {@link #buildCannedBody}, but produced by
+     * {@link #buildIrResponse} and encoded through core-ir's {@link AnthropicTranslator} instead of
+     * hand-writing the Anthropic JSON. Used by {@link StubHandleOrchestrator#handle} (the
+     * orchestrator reused by both the JVM unit tests and the TeaVM JS export {@code driver.ts}
+     * actually calls). {@code routingJson} is the same
+     * {@code io.github.intisy.ai.shared.spi.JsonCodec} every other caller here already threads in
+     * (GsonJsonCodec on the JVM, SimpleJsonCodec from the TeaVM export); {@link RoutingJsonCodecAdapter}
+     * bridges it to core-ir's own {@code JsonCodec} SPI, which is structurally identical but a
+     * different interface.
+     */
+    public static String buildCannedBodyViaIr(io.github.intisy.ai.shared.spi.JsonCodec routingJson, String model, String responseText) {
+        io.github.intisy.ai.ir.spi.JsonCodec irJson = new RoutingJsonCodecAdapter(routingJson);
+        return new AnthropicTranslator(irJson).encodeResponse(buildIrResponse(model, responseText));
+    }
+
+    /** Adapts the routing SPI's {@code JsonCodec} (parse/stringify) to core-ir's own, same-shaped one. */
+    static final class RoutingJsonCodecAdapter implements io.github.intisy.ai.ir.spi.JsonCodec {
+        private final io.github.intisy.ai.shared.spi.JsonCodec delegate;
+
+        RoutingJsonCodecAdapter(io.github.intisy.ai.shared.spi.JsonCodec delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Object parse(String json) {
+            return delegate.parse(json);
+        }
+
+        @Override
+        public String stringify(Object value) {
+            return delegate.stringify(value);
+        }
     }
 
     public static String buildStreamBody(String model, String responseText) {
@@ -200,25 +262,6 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
 
     private static String sse(String event, String dataJson) {
         return "event: " + event + "\ndata: " + dataJson + "\n\n";
-    }
-
-    // ctx.model (the tier-resolved assignment) wins when present; otherwise fall back to the
-    // request body's own "model" field, then the fixed default -- mirrors the TS handler's
-    // `(ctx && ctx.model) || body.model || "stub-model"` precedence.
-    private static String resolveModel(HttpRequest req, HandlerCtx ctx) {
-        if (ctx != null && ctx.model != null && !ctx.model.isEmpty()) {
-            return ctx.model;
-        }
-        String fromBody = extractModel(req);
-        return fromBody != null ? fromBody : DEFAULT_MODEL;
-    }
-
-    private static String extractModel(HttpRequest req) {
-        if (req == null || req.body == null) {
-            return null;
-        }
-        Matcher m = MODEL_FIELD.matcher(req.body);
-        return m.find() ? m.group(1) : null;
     }
 
     private static String stubText(String model, String responseText) {

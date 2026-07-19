@@ -44,7 +44,9 @@ public final class StubHandleOrchestrator {
         if (useStream) {
             return decision(200, "text/event-stream", StubProvider.buildStreamBody(model, cfg.responseText));
         }
-        return decision(200, "application/json", StubProvider.buildCannedBody(model, cfg.responseText));
+        // Routed through core-ir (SP-2 canary): builds an IrResponse, then AnthropicTranslator
+        // encodes it to the same Anthropic-wire JSON buildCannedBody used to hand-write.
+        return decision(200, "application/json", StubProvider.buildCannedBodyViaIr(json, model, cfg.responseText));
     }
 
     private String resolveModel(RequestInputs in, Map<?, ?> body) {

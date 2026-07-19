@@ -1,12 +1,20 @@
 // @ts-nocheck
-// The whole provider: a canned Anthropic-format response (JSON or SSE). core-auth
-// turns this into the OpenCode and Claude integrations. Includes a fake login so it
-// demonstrates the shared account menu with only the core default options.
+// The whole provider: an IR-native handleIr that returns a canned IrResponse (or a canonical IR
+// event stream). The front-door owns app<->IR translation, so this provider carries no app-wire
+// (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
+// Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
 import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
+import { HandleIrError } from "../core-proxy/dist/index.js";
 import stubModelsSeed from "./generated/stub-models.json";
+
+// Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
+// this bundled driver import it from here, not straight from core-proxy/dist -- esbuild inlines
+// a separate copy of the class per bundle, so importing from two different bundles gives two
+// different (non-instanceof-compatible) classes.
+export { HandleIrError };
 
 // Account rotation lives in core-auth (selection.ts); the strategy is just config.
 const accountManager = new AccountManager("stub", { selection: getConfigValue("stub-auth", "account_selection_strategy") || "hybrid" });
@@ -18,21 +26,66 @@ function stubAddAccount() {
   return account;
 }
 
-async function handle(request, ctx) {
-  let bodyText;
-  try { bodyText = await request.clone().text(); } catch { bodyText = ""; }
+function readResponseConfig() {
   const cfg = defineConfig("stub-auth", {});
-  const inputsJson = JSON.stringify({ bodyText: bodyText ?? "", ctxModel: (ctx && ctx.model) || "" });
-  const configJson = JSON.stringify({
+  return {
     responseText: typeof cfg.response_text === "string" ? cfg.response_text : undefined,
     latencyMs: typeof cfg.latency_ms === "number" ? cfg.latency_ms : 0,
     failRate: typeof cfg.fail_rate === "number" ? cfg.fail_rate : 0,
     streaming: (cfg.streaming === true || cfg.streaming === false) ? cfg.streaming : null,
-  });
-  const jsRandom = () => Math.random();
-  const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  };
+}
+
+const jsRandom = () => Math.random();
+const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// SP-3 T2: the IR-native entry point. The actual decision (model resolution, response text,
+// fail-rate roll, latency) still lives entirely in the Java orchestrator this calls via
+// handleViaOrchestrator -- this only adapts its JSON decision into the canonical
+// IrResponse/IrEventStream shape, so the
+// decision logic is never duplicated between TS and Java. streaming is always forced off in the
+// orchestrator call (we only need the resolved model/text/usage out of it); whether THIS call
+// returns an IrResponse or an IrEventStream is decided here, from ir.stream / the streaming config
+// override, exactly like the orchestrator's own useStream precedence.
+async function handleIr(ir, ctx) {
+  const responseConfig = readResponseConfig();
+  const inputsJson = JSON.stringify({ bodyText: JSON.stringify({ model: ir && ir.model }), ctxModel: (ctx && ctx.model) || "" });
+  const configJson = JSON.stringify({ ...responseConfig, streaming: false });
   const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
-  return new Response(decision.body, { status: decision.status, headers: decision.headers });
+
+  // T3c-2: carry the orchestrator's real transport outcome through the typed error contract
+  // (core-proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
+  // reconstruct the real status/headers/body and route it through the same rate-limit/fallback
+  // logic a normal response would get. The only non-200 status this orchestrator ever returns is
+  // 529 (the fail_rate roll) -- no retryAfterMs is included since fail_rate is a synthetic dice
+  // roll with no reset-time semantics to derive one from.
+  if (decision.status !== 200) {
+    throw new HandleIrError({ status: decision.status, headers: decision.headers, body: decision.body });
+  }
+
+  const body = JSON.parse(decision.body);
+  const irResponse = {
+    id: body.id,
+    model: body.model,
+    content: [{ kind: "text", text: body.content[0].text }],
+    stopReason: "end_turn",
+    usage: { inputTokens: body.usage.input_tokens, outputTokens: body.usage.output_tokens },
+  };
+
+  const useStream = responseConfig.streaming !== null ? responseConfig.streaming : !!(ir && ir.stream);
+  if (!useStream) return irResponse;
+
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue({ event: "message_start", id: irResponse.id, model: irResponse.model, role: "assistant", usage: { inputTokens: irResponse.usage.inputTokens, outputTokens: 0 } });
+      controller.enqueue({ event: "content_block_start", index: 0, blockKind: "text" });
+      controller.enqueue({ event: "text_delta", index: 0, text: irResponse.content[0].text });
+      controller.enqueue({ event: "content_block_stop", index: 0 });
+      controller.enqueue({ event: "message_delta", stopReason: irResponse.stopReason, usage: irResponse.usage });
+      controller.enqueue({ event: "message_stop" });
+      controller.close();
+    },
+  });
 }
 
 export const driver = {
@@ -46,11 +99,11 @@ export const driver = {
     const count = typeof cfg.model_count === "number" ? cfg.model_count : 3;
     try { return { models: await buildModelsViaJava(count) }; } catch { return null; }
   },
-  handle,
+  handleIr,
   loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth) — completes immediately.", complete: async () => stubAddAccount() }),
   accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
   // Even the stub exposes a Settings entry in its auth menu — the Response group is
-  // wired to what handle() actually reads; Account rotation drives the core selection.
+  // wired to what handleIr actually reads; Account rotation drives the core selection.
   settings: {
     groups: [
       { title: "Response", fields: [

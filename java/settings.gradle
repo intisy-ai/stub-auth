@@ -25,6 +25,13 @@ include ":stub-provider"
 // mirroring core-auth's :auth-teavm exactly (Task 5's js half of the shared-Java model).
 include ":stub-teavm"
 
+// :ir - core-ir's canonical IR types + vendor translators (AnthropicTranslator etc.), aliased in
+// exactly like :routing/:teavm above so stub-provider can build its canned response through
+// core-ir instead of hand-writing Anthropic-format JSON (SP-2 canary). core-ir is a DIRECT
+// submodule of stub-auth (../core-ir from here, i.e. stub-auth/core-ir).
+include ":ir"
+project(":ir").projectDir = file("../core-ir/java/ir")
+
 // ---- test-only composite build -------------------------------------------------------------
 // Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
 // AiJava/ProviderRegistry and route a request through the jar this build produces -- proving
