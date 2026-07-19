@@ -7,7 +7,21 @@
 import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
-import { HandleIrError } from "../core-proxy/dist/index.js";
+// Local, dependency-free copy of core-proxy's HandleIrError wire-error shape. The front-door
+// recognizes it by its stable `name` marker (duck-typed isHandleIrError), NOT by class identity --
+// esbuild bundles each side separately, so a shared class is never instanceof-compatible across the
+// boundary anyway. Defining it here removes a build-time dependency on core-proxy's dist (which this
+// provider never builds), so a clean checkout (CI / fresh deploy) bundles without it.
+class HandleIrError extends Error {
+  constructor(init) {
+    super("handleIr transport error: " + init.status);
+    this.name = "HandleIrError";
+    this.status = init.status;
+    this.headers = init.headers;
+    this.body = init.body;
+    this.retryAfterMs = init.retryAfterMs;
+  }
+}
 import stubModelsSeed from "./generated/stub-models.json";
 
 // Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
