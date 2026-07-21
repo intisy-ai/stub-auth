@@ -24,32 +24,30 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Java port of stub-auth's TS driver ({@code src/driver.ts}). Ported field-for-field from
- * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
- * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
- * 12), and the same {@code responseText + " (served by " + model + ")"} text shape.
- * {@link #handleIr} (SP-3/T4) is the sole serving path: it reads the configured
+ * Canned-response builder for the stub provider: fixed {@code id}, {@code stop_reason}/
+ * {@code stop_sequence}, {@code usage} (input_tokens 1, output_tokens 12), and the
+ * {@code responseText + " (served by " + model + ")"} text shape.
+ * {@link #handleIr} is the sole serving path: it reads the configured
  * {@code response_text} via {@link StubConfig#values(HandlerCtx)} (which threads the injected
  * {@code ctx.store}, never a self-assembled FileStore), falling back to
  * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank; callers with a real response text use
  * {@link #buildCannedBody} / {@link #buildStreamBody} directly. There is no app-wire
- * {@code handle()} override -- the front-door owns app&lt;-&gt;IR translation, so this provider
+ * {@code handle()} override: the front-door owns app&lt;-&gt;IR translation, so this provider
  * inherits {@code Provider}'s throwing {@code handle} default and carries zero wire-format code.
  *
  * <p>Registered via {@code META-INF/services/io.github.intisy.ai.shared.routing.Provider} so a
- * JVM host discovers it purely through {@code ServiceLoader} — see
+ * JVM host discovers it purely through {@code ServiceLoader}, see
  * {@code io.github.intisy.ai.jvm.ProviderRegistry} in ai-java. This class (and this whole
- * module) is deliberately plain: no gson, no reflection — hand-rolled JSON string building only,
- * matching the brief ("transpilability is a Task-5 concern, keep it plain").
+ * module) is deliberately plain: no gson, no reflection, hand-rolled JSON string building only,
+ * to keep it transpilable by TeaVM.
  *
- * <p>Also implements the typed capability SPI ({@link ConfigurableProvider}/
- * {@link ModelCatalogProvider}/{@link QuotaProvider}) added by core-proxy's capability-SPI task,
- * replacing what would otherwise be {@code /v1/config}/{@code /v1/models}/{@code /v1/quota} URL
- * branches on the app-wire path. stub is the ONE provider allowed to hardcode canned example
- * data (models, config schema, quota bars) — everything below is illustrative, not derived from a
- * real upstream. {@code OAuthProvider} is deliberately NOT implemented: stub's
- * {@code loginFlow} (src/driver.ts) completes instantly with no real authorize/exchange
- * round-trip, so there is no OAuth capability to expose.
+ * <p>Also implements core-proxy's typed capability SPI ({@link ConfigurableProvider}/
+ * {@link ModelCatalogProvider}/{@link QuotaProvider}), replacing what would otherwise be
+ * {@code /v1/config}/{@code /v1/models}/{@code /v1/quota} URL branches on the app-wire path. stub
+ * is the ONE provider allowed to hardcode canned example data (models, config schema, quota
+ * bars): everything below is illustrative, not derived from a real upstream. {@code OAuthProvider}
+ * is deliberately NOT implemented: stub's {@code loginFlow} (src/driver.ts) completes instantly
+ * with no real authorize/exchange round-trip, so there is no OAuth capability to expose.
  */
 public final class StubProvider implements Provider, ConfigurableProvider, ModelCatalogProvider, QuotaProvider {
 
@@ -62,9 +60,9 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * IR-native entry point (SP-3/T4): model resolution is {@code ctx.model} then
+     * IR-native entry point: model resolution is {@code ctx.model} then
      * {@code request.model} then {@link #DEFAULT_MODEL}, read off the already-decoded
-     * {@link IrRequest} -- the front-door (Router/proxy server) owns app&lt;-&gt;IR translation, so
+     * {@link IrRequest}. The front-door (Router/proxy server) owns app&lt;-&gt;IR translation, so
      * this provider has no app-wire {@code handle()} and no wire-format code at all (it inherits
      * {@code Provider}'s throwing {@code handle} default). Stub never streams from this entry
      * point: it is a canned example with no per-token generation, so a single {@link IrResponse}
@@ -149,13 +147,13 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
 
     /**
      * The transpilable "core" reused verbatim by {@code StubProviderJs} (the {@code :stub-teavm}
-     * TeaVM export, Task 5's js half of the shared-Java model) once {@code model} has already been
-     * resolved — pure {@code String}/{@code StringBuilder} construction, no gson/java.net/nio/
+     * TeaVM export, the js half of the shared-Java model) once {@code model} has already been
+     * resolved: pure {@code String}/{@code StringBuilder} construction, no gson/java.net/nio/
      * reflection/threads/{@code System.getenv}, so TeaVM compiles it unchanged. {@code model}
      * resolution itself stays split per caller: {@link #handleIr} resolves it off the decoded
      * {@link IrRequest} (ctx then {@code request.model} then the fixed default); the JS path
      * resolves it via {@code SimpleJsonCodec} (core-proxy's {@code :teavm} js-base) instead of
-     * duplicating a second JSON reader here — this method is the shared seam between the two,
+     * duplicating a second JSON reader here. This method is the shared seam between the two,
      * taking an already-resolved {@code model} so neither side's JSON-reading choice leaks into the
      * other.
      */
@@ -178,7 +176,7 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * SP-2 canary: the same canned reply as {@link #buildCannedBody}, but produced by
+     * The same canned reply as {@link #buildCannedBody}, but produced by
      * {@link #buildIrResponse} and encoded through core-ir's {@link AnthropicTranslator} instead of
      * hand-writing the Anthropic JSON. Used by {@link StubHandleOrchestrator#handle} (the
      * orchestrator reused by both the JVM unit tests and the TeaVM JS export {@code driver.ts}

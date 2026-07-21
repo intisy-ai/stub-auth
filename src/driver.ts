@@ -53,7 +53,7 @@ function readResponseConfig() {
 const jsRandom = () => Math.random();
 const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// SP-3 T2: the IR-native entry point. The actual decision (model resolution, response text,
+// The IR-native entry point. The actual decision (model resolution, response text,
 // fail-rate roll, latency) still lives entirely in the Java orchestrator this calls via
 // handleViaOrchestrator -- this only adapts its JSON decision into the canonical
 // IrResponse/IrEventStream shape, so the
@@ -67,7 +67,7 @@ async function handleIr(ir, ctx) {
   const configJson = JSON.stringify({ ...responseConfig, streaming: false });
   const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
 
-  // T3c-2: carry the orchestrator's real transport outcome through the typed error contract
+  // Carry the orchestrator's real transport outcome through the typed error contract
   // (core-proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
   // reconstruct the real status/headers/body and route it through the same rate-limit/fallback
   // logic a normal response would get. The only non-200 status this orchestrator ever returns is
@@ -114,9 +114,9 @@ export const driver = {
     try { return { models: await buildModelsViaJava(count) }; } catch { return null; }
   },
   handleIr,
-  loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth) — completes immediately.", complete: async () => stubAddAccount() }),
+  loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth), completes immediately.", complete: async () => stubAddAccount() }),
   accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
-  // Even the stub exposes a Settings entry in its auth menu — the Response group is
+  // Even the stub exposes a Settings entry in its auth menu: the Response group is
   // wired to what handleIr actually reads; Account rotation drives the core selection.
   settings: {
     groups: [

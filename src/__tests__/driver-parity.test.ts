@@ -2,10 +2,9 @@ import { describe, it, expect } from "vitest";
 // @ts-ignore build artifact (produced by `npm run build`)
 import { driver } from "../../dist/driver.js";
 
-// T4: repointed from the deleted legacy driver.handle() wrapper to the IR-native handleIr --
-// these assert the provider's OWN behavior (canned decision from the Java orchestrator: id,
-// model, text, usage, and the IR event sequence), not the app-wire JSON/SSE encoding, which is
-// now the front-door's responsibility.
+// These assert the provider's OWN behavior via driver.handleIr (canned decision from the Java
+// orchestrator: id, model, text, usage, and the IR event sequence), not the app-wire JSON/SSE
+// encoding, which is the front-door's responsibility.
 describe("stub driver.handleIr (Java) regression", () => {
   it("canned IrResponse (json default)", async () => {
     const ir = await driver.handleIr({ model: "stub-pro", stream: false }, {} as any);
