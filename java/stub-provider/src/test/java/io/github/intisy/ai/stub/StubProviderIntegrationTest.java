@@ -70,7 +70,7 @@ class StubProviderIntegrationTest {
             assertTrue(resp.body.contains("(served by m-stub)"),
                     "expected the stubText() suffix naming the routed model: " + resp.body);
             assertTrue(resp.body.contains("\"usage\":{\"input_tokens\":1,\"output_tokens\":12}"),
-                    "usage block should match src/driver.ts's jsonBody() exactly: " + resp.body);
+                    "usage block should be the Anthropic-wire encoding the front-door produces: " + resp.body);
         }
     }
 
@@ -103,7 +103,7 @@ class StubProviderIntegrationTest {
         // Router decodes the inbound Anthropic wire to IR, calls the provider's handleIr, and
         // encodes the IrResponse back to wire. Without it the Router would hit Provider's throwing
         // handle() default.
-        p.translator = new AnthropicTranslator(new StubProvider.RoutingJsonCodecAdapter(new GsonJsonCodec()));
+        p.translator = new AnthropicTranslator(new RoutingJsonCodecAdapter(new GsonJsonCodec()));
         p.configFile = CONFIG_FILE;
         p.routingKey = "providerRouting";
         p.tierSourceProvider = "stub";
@@ -137,5 +137,25 @@ class StubProviderIntegrationTest {
         req.headers = new HashMap<>();
         req.body = body;
         return req;
+    }
+
+    /** Adapts the routing SPI's {@code JsonCodec} to core-ir's own, same-shaped one, so this test can
+     * build the front-door's {@link AnthropicTranslator} the way a real profile does. */
+    private static final class RoutingJsonCodecAdapter implements io.github.intisy.ai.ir.spi.JsonCodec {
+        private final io.github.intisy.ai.shared.spi.JsonCodec delegate;
+
+        RoutingJsonCodecAdapter(io.github.intisy.ai.shared.spi.JsonCodec delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Object parse(String json) {
+            return delegate.parse(json);
+        }
+
+        @Override
+        public String stringify(Object value) {
+            return delegate.stringify(value);
+        }
     }
 }

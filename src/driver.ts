@@ -77,14 +77,8 @@ async function handleIr(ir, ctx) {
     throw new HandleIrError({ status: decision.status, headers: decision.headers, body: decision.body });
   }
 
-  const body = JSON.parse(decision.body);
-  const irResponse = {
-    id: body.id,
-    model: body.model,
-    content: [{ kind: "text", text: body.content[0].text }],
-    stopReason: "end_turn",
-    usage: { inputTokens: body.usage.input_tokens, outputTokens: body.usage.output_tokens },
-  };
+  // The orchestrator returns canonical IR JSON, so it IS the IrResponse; no app-wire remapping.
+  const irResponse = JSON.parse(decision.body);
 
   const useStream = responseConfig.streaming !== null ? responseConfig.streaming : !!(ir && ir.stream);
   if (!useStream) return irResponse;

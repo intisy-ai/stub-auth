@@ -6,7 +6,6 @@ import io.github.intisy.ai.ir.IrResponse;
 import io.github.intisy.ai.ir.IrStopReason;
 import io.github.intisy.ai.ir.IrUsage;
 import io.github.intisy.ai.ir.TextBlock;
-import io.github.intisy.ai.ir.translators.anthropic.AnthropicTranslator;
 import io.github.intisy.ai.shared.routing.AccountQuota;
 import io.github.intisy.ai.shared.routing.ConfigSchema;
 import io.github.intisy.ai.shared.routing.ConfigurableProvider;
@@ -20,6 +19,7 @@ import io.github.intisy.ai.shared.routing.QuotaProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +30,8 @@ import java.util.Map;
  * {@link #handleIr} is the sole serving path: it reads the configured
  * {@code response_text} via {@link StubConfig#values(HandlerCtx)} (which threads the injected
  * {@code ctx.store}, never a self-assembled FileStore), falling back to
- * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank; callers with a real response text use
- * {@link #buildCannedBody} / {@link #buildStreamBody} directly. There is no app-wire
+ * {@link #DEFAULT_RESPONSE_TEXT} only when unset/blank. The JS/TeaVM path serves the same reply
+ * as IR via {@link #buildIrResponseJson}. There is no app-wire
  * {@code handle()} override: the front-door owns app&lt;-&gt;IR translation, so this provider
  * inherits {@code Provider}'s throwing {@code handle} default and carries zero wire-format code.
  *
@@ -146,24 +146,8 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * The transpilable "core" reused verbatim by {@code StubProviderJs} (the {@code :stub-teavm}
-     * TeaVM export, the js half of the shared-Java model) once {@code model} has already been
-     * resolved: pure {@code String}/{@code StringBuilder} construction, no gson/java.net/nio/
-     * reflection/threads/{@code System.getenv}, so TeaVM compiles it unchanged. {@code model}
-     * resolution itself stays split per caller: {@link #handleIr} resolves it off the decoded
-     * {@link IrRequest} (ctx then {@code request.model} then the fixed default); the JS path
-     * resolves it via {@code SimpleJsonCodec} (core-proxy's {@code :teavm} js-base) instead of
-     * duplicating a second JSON reader here. This method is the shared seam between the two,
-     * taking an already-resolved {@code model} so neither side's JSON-reading choice leaks into the
-     * other.
-     */
-    public static String buildCannedBody(String model, String responseText) {
-        return jsonBody(model, stubText(model, responseText));
-    }
-
-    /**
-     * The canned reply as an {@link IrResponse}, shared by {@link #handleIr} and
-     * {@link #buildCannedBodyViaIr} so there is exactly one place that assembles it.
+     * The canned reply as an {@link IrResponse}, the single place that assembles it. {@link #handleIr}
+     * (the JVM path) returns it directly; the JS/TeaVM path serializes it via {@link #buildIrResponseJson}.
      */
     public static IrResponse buildIrResponse(String model, String responseText) {
         IrResponse ir = new IrResponse();
@@ -176,38 +160,26 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     }
 
     /**
-     * The same canned reply as {@link #buildCannedBody}, but produced by
-     * {@link #buildIrResponse} and encoded through core-ir's {@link AnthropicTranslator} instead of
-     * hand-writing the Anthropic JSON. Used by {@link StubHandleOrchestrator#handle} (the
-     * orchestrator reused by both the JVM unit tests and the TeaVM JS export {@code driver.ts}
-     * actually calls). {@code routingJson} is the same
-     * {@code io.github.intisy.ai.shared.spi.JsonCodec} every other caller here already threads in
-     * (GsonJsonCodec on the JVM, SimpleJsonCodec from the TeaVM export); {@link RoutingJsonCodecAdapter}
-     * bridges it to core-ir's own {@code JsonCodec} SPI, which is structurally identical but a
-     * different interface.
+     * {@link #buildIrResponse} serialized to canonical IR JSON (the shape core-auth/core-proxy's JS
+     * front-door consumes), for the TeaVM JS export {@code driver.ts} calls. No app-wire format is
+     * involved: the front-door owns IR&lt;-&gt;app translation. {@code json} is the routing SPI codec
+     * every caller here already threads in (GsonJsonCodec on the JVM, SimpleJsonCodec from the export).
      */
-    public static String buildCannedBodyViaIr(io.github.intisy.ai.shared.spi.JsonCodec routingJson, String model, String responseText) {
-        io.github.intisy.ai.ir.spi.JsonCodec irJson = new RoutingJsonCodecAdapter(routingJson);
-        return new AnthropicTranslator(irJson).encodeResponse(buildIrResponse(model, responseText));
-    }
-
-    /** Adapts the routing SPI's {@code JsonCodec} (parse/stringify) to core-ir's own, same-shaped one. */
-    static final class RoutingJsonCodecAdapter implements io.github.intisy.ai.ir.spi.JsonCodec {
-        private final io.github.intisy.ai.shared.spi.JsonCodec delegate;
-
-        RoutingJsonCodecAdapter(io.github.intisy.ai.shared.spi.JsonCodec delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public Object parse(String json) {
-            return delegate.parse(json);
-        }
-
-        @Override
-        public String stringify(Object value) {
-            return delegate.stringify(value);
-        }
+    public static String buildIrResponseJson(io.github.intisy.ai.shared.spi.JsonCodec json, String model, String responseText) {
+        IrResponse ir = buildIrResponse(model, responseText);
+        Map<String, Object> block = new LinkedHashMap<>();
+        block.put("kind", "text");
+        block.put("text", ((TextBlock) ir.content.get(0)).text);
+        Map<String, Object> usage = new LinkedHashMap<>();
+        usage.put("inputTokens", ir.usage.inputTokens);
+        usage.put("outputTokens", ir.usage.outputTokens);
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("id", ir.id);
+        out.put("model", ir.model);
+        out.put("content", Collections.singletonList(block));
+        out.put("stopReason", "end_turn");
+        out.put("usage", usage);
+        return json.stringify(out);
     }
 
     public static String buildStreamBody(String model, String responseText) {
@@ -264,22 +236,6 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
 
     private static String stubText(String model, String responseText) {
         return responseText + " (served by " + model + ")";
-    }
-
-    // Hand-built JSON, matching src/driver.ts's jsonBody() exactly (same key order/values):
-    // { id, type, role, model, content: [{ type, text }], stop_reason, stop_sequence,
-    //   usage: { input_tokens, output_tokens } }.
-    private static String jsonBody(String model, String text) {
-        return "{"
-                + "\"id\":\"msg_stub_0001\","
-                + "\"type\":\"message\","
-                + "\"role\":\"assistant\","
-                + "\"model\":" + quote(model) + ","
-                + "\"content\":[{\"type\":\"text\",\"text\":" + quote(text) + "}],"
-                + "\"stop_reason\":\"end_turn\","
-                + "\"stop_sequence\":null,"
-                + "\"usage\":{\"input_tokens\":1,\"output_tokens\":12}"
-                + "}";
     }
 
     // Escapes just enough (backslash, quote, control chars) for this provider's own canned

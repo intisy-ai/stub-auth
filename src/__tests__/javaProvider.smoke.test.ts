@@ -15,8 +15,10 @@ describe("stub TeaVM orchestrator — callable from node", () => {
     const body = JSON.parse(d.body);
     expect(body.id).toBe("msg_stub_0001");
     expect(body.model).toBe("stub-pro");
+    expect(body.content[0].kind).toBe("text");
     expect(body.content[0].text).toBe("custom (served by stub-pro)");
-    expect(body.usage).toEqual({ input_tokens: 1, output_tokens: 12 });
+    expect(body.stopReason).toBe("end_turn");
+    expect(body.usage).toEqual({ inputTokens: 1, outputTokens: 12 });
   });
 
   it("honors the streaming override", async () => {
