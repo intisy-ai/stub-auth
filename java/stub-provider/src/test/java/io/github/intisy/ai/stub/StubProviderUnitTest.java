@@ -28,7 +28,7 @@ class StubProviderUnitTest {
     }
 
     @Test
-    void buildModels_matchesTsShapeAndClamps() {
+    void buildModelsProducesExpectedShapeAndClamps() {
         assertEquals("{\"stub-model\":{\"name\":\"Stub Default\"}}", StubProvider.buildModels(1));
         assertEquals(
             "{\"stub-model\":{\"name\":\"Stub Default\"},\"stub-pro\":{\"name\":\"Stub Pro\"},\"stub-fast\":{\"name\":\"Stub Fast\"}}",
