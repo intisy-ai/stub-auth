@@ -24,10 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Java port of stub-auth's TS driver ({@code src/driver.ts}). Ported field-for-field from
- * {@code jsonBody}/{@code stubText}/{@code streamBody}/{@code sse}: same {@code id}, same
- * {@code stop_reason}/{@code stop_sequence}, same {@code usage} (input_tokens 1, output_tokens
- * 12), and the same {@code responseText + " (served by " + model + ")"} text shape.
+ * Canned-response builder for the stub provider: fixed {@code id}, {@code stop_reason}/
+ * {@code stop_sequence}, {@code usage} (input_tokens 1, output_tokens 12), and the
+ * {@code responseText + " (served by " + model + ")"} text shape.
  * {@link #handleIr} is the sole serving path: it reads the configured
  * {@code response_text} via {@link StubConfig#values(HandlerCtx)} (which threads the injected
  * {@code ctx.store}, never a self-assembled FileStore), falling back to

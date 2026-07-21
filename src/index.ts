@@ -19,7 +19,7 @@ defineConfig("stub-auth", {
 
 defineReadme({
   description:
-    "A stub AI-provider driver for [`core-auth`](https://github.com/intisy-ai/core-auth). It returns canned,\nvalid responses as canonical IR (the front-door encodes them to the app's Anthropic wire format, JSON or\nSSE) so the auth pipeline — discovery, routing, and the per-app adapters in Claude Code and OpenCode — can\nbe validated end to end without contacting any real provider. It is also the reference **example** for\nbuilding new provider plugins: define `{ id, label, models, handleIr }`, let core-auth do the rest.",
+    "A stub AI-provider driver for [`core-auth`](https://github.com/intisy-ai/core-auth). It returns canned,\nvalid responses as canonical IR (the front-door encodes them to the app's Anthropic wire format, JSON or\nSSE) so the auth pipeline (discovery, routing, and the per-app adapters in Claude Code and OpenCode) can\nbe validated end to end without contacting any real provider. It is also the reference **example** for\nbuilding new provider plugins: define `{ id, label, models, handleIr }`, let core-auth do the rest.",
   architecture: `flowchart LR
   A[cc / oc chat] --> B[core-auth / loader proxy]
   B --> C{active provider}
@@ -30,14 +30,14 @@ defineReadme({
   F --> A`,
   structure: {
     src: [
-      "`src/driver.ts` — the provider: `id`/`label`/`models` + `handleIr()` returning the canned IR response.",
-      "`src/index.ts` — OpenCode entry (`defineProvider(driver).opencode`).",
-      "`src/handler.ts` — Claude entry (exposes the IR-native `handleIr` the loader proxy calls).",
-      "`src/commands.ts` — cross-app slash-commands (the reference example of the command framework).",
-      "`core-auth/`, `core/` — git submodules (auth engine; shared config/logging/commands), bundled in.",
+      "`src/driver.ts`, the provider: `id`/`label`/`models` + `handleIr()` returning the canned IR response.",
+      "`src/index.ts`, OpenCode entry (`defineProvider(driver).opencode`).",
+      "`src/handler.ts`, Claude entry (exposes the IR-native `handleIr` the loader proxy calls).",
+      "`src/commands.ts`, cross-app slash-commands (the reference example of the command framework).",
+      "`core-auth/`, `core/`, git submodules (auth engine; shared config/logging/commands), bundled in.",
     ],
     dist: [
-      "`dist/index.js` + `dist/handler.js` — esbuild bundles the submodules in, producing self-contained entries; not committed.",
+      "`dist/index.js` + `dist/handler.js`, esbuild bundles the submodules in, producing self-contained entries; not committed.",
     ],
   },
   commands: STUB_COMMANDS,

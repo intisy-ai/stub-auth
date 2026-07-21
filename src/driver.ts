@@ -114,7 +114,7 @@ export const driver = {
     try { return { models: await buildModelsViaJava(count) }; } catch { return null; }
   },
   handleIr,
-  loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth) — completes immediately.", complete: async () => stubAddAccount() }),
+  loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth), completes immediately.", complete: async () => stubAddAccount() }),
   accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
   // Even the stub exposes a Settings entry in its auth menu: the Response group is
   // wired to what handleIr actually reads; Account rotation drives the core selection.
