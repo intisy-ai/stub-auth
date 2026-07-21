@@ -19,8 +19,8 @@ import java.util.function.UnaryOperator;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Task E-E: StubProvider's typed capability SPI (ConfigurableProvider/ModelCatalogProvider/
- * QuotaProvider) -- canned example data, config persisted via the injected {@link Store} (never a
+ * StubProvider's typed capability SPI (ConfigurableProvider/ModelCatalogProvider/
+ * QuotaProvider): canned example data, config persisted via the injected {@link Store} (never a
  * self-assembled FileStore), models reused from {@link StubProvider#buildModels}, no OAuthProvider
  * (stub has no real OAuth notion).
  */
@@ -136,8 +136,8 @@ class StubProviderCapabilityTest {
     void handleIr_servesConfiguredResponseText_notTheHardcodedDefault() {
         // Root-cause proof: handleIr must read response_text through the SAME seam
         // ConfigurableProvider uses (StubConfig.values -> ctx.store), not DEFAULT_RESPONSE_TEXT.
-        // T4-repointed from the deleted app-wire handle() -- this asserts the provider's own
-        // config-seam behavior on the IrResponse, not any app-wire encoding (front-door's job).
+        // Asserts the provider's own config-seam behavior on the IrResponse, not any app-wire
+        // encoding (front-door's job).
         FakeStore store = new FakeStore();
         StubProvider provider = new StubProvider();
         Map<String, Object> incoming = new LinkedHashMap<>();
@@ -156,7 +156,6 @@ class StubProviderCapabilityTest {
 
     @Test
     void handleIr_fallsBackToDefault_whenStoreEmpty() {
-        // T4-repointed from the deleted app-wire handle().
         StubProvider provider = new StubProvider();
         IrRequest req = new IrRequest();
         req.model = "stub-model";

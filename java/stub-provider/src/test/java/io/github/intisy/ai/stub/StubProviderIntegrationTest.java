@@ -25,17 +25,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Task 4's proof: stub-auth's OWN {@code ./gradlew :stub-provider:jar} artifact — not an
- * in-test-classpath fixture, the real built jar from this module — dropped into a directory and
+ * Proves stub-auth's OWN {@code ./gradlew :stub-provider:jar} artifact, not an
+ * in-test-classpath fixture but the real built jar from this module, dropped into a directory and
  * discovered purely via {@code ServiceLoader} by ai-java's {@code ProviderRegistry}, then routed
  * a real request through {@code AiJava.router(...)}. ai-java is pulled in as a test-only Gradle
- * composite build ({@code includeBuild}, see {@code ../settings.gradle}) — it is never modified
+ * composite build ({@code includeBuild}, see {@code ../settings.gradle}); it is never modified
  * to know stub-auth exists; discovery is 100% jar-on-disk + {@code META-INF/services}.
  *
  * <p>The jar path comes from the {@code stubProviderJar} system property the {@code stub-provider}
  * build wires up (see {@code build.gradle}'s {@code test} block: {@code
  * systemProperty "stubProviderJar", tasks.jar.archiveFile...}), so this test always exercises
- * whatever the {@code jar} task most recently produced — never a hand-duplicated path/version
+ * whatever the {@code jar} task most recently produced, never a hand-duplicated path/version
  * string.
  */
 class StubProviderIntegrationTest {
@@ -98,8 +98,8 @@ class StubProviderIntegrationTest {
 
     private static RoutingProfile profile() {
         RoutingProfile p = new RoutingProfile();
-        // Post-T4 the provider is IR-native (no app-wire handle()), so the front-door must supply
-        // an app<->IR translator -- exactly as the real anthropicProfile does. With it set, the
+        // The provider is IR-native (no app-wire handle()), so the front-door must supply
+        // an app<->IR translator, exactly as the real anthropicProfile does. With it set, the
         // Router decodes the inbound Anthropic wire to IR, calls the provider's handleIr, and
         // encodes the IrResponse back to wire. Without it the Router would hit Provider's throwing
         // handle() default.

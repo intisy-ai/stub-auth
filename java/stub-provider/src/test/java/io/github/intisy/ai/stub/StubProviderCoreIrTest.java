@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * SP-2 canary proof: {@link StubProvider#buildCannedBodyViaIr} emits Anthropic-wire JSON built
+ * Proves {@link StubProvider#buildCannedBodyViaIr} emits Anthropic-wire JSON built
  * through core-ir (an {@link IrResponse} encoded by {@link AnthropicTranslator}), and that wire
  * parses BACK into the expected IR via {@code AnthropicTranslator.decodeResponse} -- proving the
  * provider drives core-ir end to end, not just producing JSON that happens to look right.

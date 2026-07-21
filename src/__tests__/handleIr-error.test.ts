@@ -1,4 +1,4 @@
-// T3c-2: proves stub-auth's handleIr throws the canonical typed transport error
+// Proves stub-auth's handleIr throws the canonical typed transport error
 // (core-proxy's HandleIrError) instead of a plain Error on a non-2xx upstream outcome. The
 // front-door reconstructs the Response from that typed error, so this provider carries no
 // app-wire encoding of its own to test here.
