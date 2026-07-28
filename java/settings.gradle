@@ -27,10 +27,16 @@ include ":stub-teavm"
 
 // :ir - core-ir's canonical IR types + vendor translators (AnthropicTranslator etc.), aliased in
 // exactly like :routing/:teavm above so stub-provider can build its canned response through
-// core-ir instead of hand-writing Anthropic-format JSON (SP-2 canary). core-ir is a DIRECT
-// submodule of stub-auth (../core-ir from here, i.e. stub-auth/core-ir).
+// core-ir instead of hand-writing Anthropic-format JSON. core-ir is a DIRECT submodule of
+// stub-auth (../core-ir from here, i.e. stub-auth/core-ir).
 include ":ir"
 project(":ir").projectDir = file("../core-ir/java/ir")
+
+// :anthropic - the Anthropic translator (AnthropicTranslator etc.), aliased the same way from the
+// anthropic-translator submodule (../anthropic-translator/java/anthropic), a DIRECT submodule of
+// stub-auth like core-ir.
+include ":anthropic"
+project(":anthropic").projectDir = file("../anthropic-translator/java/anthropic")
 
 // ---- test-only composite build -------------------------------------------------------------
 // Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
