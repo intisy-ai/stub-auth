@@ -4,7 +4,7 @@
 
 import { defineProvider } from "../core-auth/dist/index.js";
 import { driver } from "./driver.js";
-import { deployCommands, defineConfig, defineReadme, maybeRunReadmeCli } from "../core/src/index.js";
+import { deployCommands, defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli } from "../core/src/index.js";
 import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
 
 // Register config defaults BEFORE the CLI guard so `config schema` sees them (no write).
@@ -15,6 +15,29 @@ defineConfig("stub-auth", {
   latency_ms: 0,
   fail_rate: 0,
   streaming: null,   // null = honor the request's stream flag; true/false = force
+});
+
+// Describe those settings as controllable data so a dashboard can render typed
+// controls for them without knowing anything about stub-auth specifically.
+defineCapabilities("stub-auth", {
+  fields: [
+    { key: "logging", type: "boolean", label: "Logging", description: "Write this plugin's log file.", group: "General" },
+    { key: "response_text", type: "multiline", label: "Canned response", description: "The text every stub reply returns.", group: "Response" },
+    { key: "model_count", type: "number", label: "Advertised models", description: "How many stub models to expose.", min: 1, group: "Response" },
+    { key: "latency_ms", type: "number", label: "Simulated latency (ms)", min: 0, group: "Simulation" },
+    { key: "fail_rate", type: "number", label: "Failure rate", description: "0 = never fail, 1 = always fail.", min: 0, max: 1, step: 0.05, group: "Simulation" },
+    {
+      key: "streaming", type: "select", label: "Streaming", group: "Simulation",
+      options: [
+        { value: "null", label: "Honor request" },
+        { value: "true", label: "Force on" },
+        { value: "false", label: "Force off" },
+      ],
+    },
+  ],
+  actions: [
+    { id: "accounts", label: "List accounts", description: "Print the stub-auth demo accounts." },
+  ],
 });
 
 defineReadme({
