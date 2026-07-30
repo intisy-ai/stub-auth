@@ -7,6 +7,7 @@ import { driver } from "./driver.js";
 
 export const handleIr = driver.handleIr;
 export const accounts = driver.accounts;
+export const loginFlow = driver.loginFlow;
 export const menu = () => runProviderMenu(driver);
 export const menuModel = () => buildAccountMenu(driver);   // opencode loader renders this natively in-tab
 export const def = {
