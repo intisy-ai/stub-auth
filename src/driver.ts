@@ -4,7 +4,7 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount } from "../core-auth/dist/index.js";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 // Local, dependency-free copy of core-proxy's HandleIrError wire-error shape. The front-door
@@ -31,7 +31,7 @@ import stubModelsSeed from "./generated/stub-models.json";
 export { HandleIrError };
 
 // Account rotation lives in core-auth (selection.ts); the strategy is just config.
-const accountManager = new AccountManager("stub", { selection: getConfigValue("stub-auth", "account_selection_strategy") || "hybrid" });
+const accountManager = new AccountManager("stub", commonManagerOptions({ account_selection_strategy: getConfigValue("stub-auth", "account_selection_strategy") }));
 
 function stubAddAccount() {
   const n = accountManager.list().length + 1;

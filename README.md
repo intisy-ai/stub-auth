@@ -58,6 +58,7 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 
 ```json
 {
+  "account_selection_strategy": "hybrid",
   "logging": true,
   "response_text": "Hello from stub-auth: the core-auth pipeline works end to end.",
   "model_count": 3,
@@ -69,6 +70,7 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 
 | Key | Default |
 | --- | --- |
+| `account_selection_strategy` | `"hybrid"` |
 | `logging` | `true` |
 | `response_text` | `"Hello from stub-auth: the core-auth pipeline works end to end."` |
 | `model_count` | `3` |

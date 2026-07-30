@@ -2,13 +2,14 @@
 // OpenCode entry (the deployed plugin file). core-auth registers the native
 // provider + auth method and routes requests to driver.handleIr.
 
-import { defineProvider } from "../core-auth/dist/index.js";
+import { defineProvider, COMMON_PROVIDER_CAPABILITIES, COMMON_PROVIDER_DEFAULTS } from "../core-auth/dist/index.js";
 import { driver } from "./driver.js";
 import { deployCommands, defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli } from "../core/src/index.js";
 import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
 
 // Register config defaults BEFORE the CLI guard so `config schema` sees them (no write).
 defineConfig("stub-auth", {
+  ...COMMON_PROVIDER_DEFAULTS,
   logging: true,
   response_text: "Hello from stub-auth: the core-auth pipeline works end to end.",
   model_count: 3,
@@ -21,6 +22,7 @@ defineConfig("stub-auth", {
 // controls for them without knowing anything about stub-auth specifically.
 defineCapabilities("stub-auth", {
   fields: [
+    ...COMMON_PROVIDER_CAPABILITIES,
     { key: "logging", type: "boolean", label: "Logging", description: "Write this plugin's log file.", group: "General" },
     { key: "response_text", type: "multiline", label: "Canned response", description: "The text every stub reply returns.", group: "Response" },
     { key: "model_count", type: "number", label: "Advertised models", description: "How many stub models to expose.", min: 1, group: "Response" },
