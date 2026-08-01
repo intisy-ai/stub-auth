@@ -4,28 +4,13 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions } from "../core-auth/dist/index.js";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups } from "../core-auth/dist/index.js";
 import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
-// Local, dependency-free copy of core-proxy's HandleIrError wire-error shape. The front-door
-// recognizes it by its stable `name` marker (duck-typed isHandleIrError), NOT by class identity --
-// esbuild bundles each side separately, so a shared class is never instanceof-compatible across the
-// boundary anyway. Defining it here removes a build-time dependency on core-proxy's dist (which this
-// provider never builds), so a clean checkout (CI / fresh deploy) bundles without it.
-class HandleIrError extends Error {
-  constructor(init) {
-    super("handleIr transport error: " + init.status);
-    this.name = "HandleIrError";
-    this.status = init.status;
-    this.headers = init.headers;
-    this.body = init.body;
-    this.retryAfterMs = init.retryAfterMs;
-  }
-}
 import stubModelsSeed from "./generated/stub-models.json";
 
 // Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
-// this bundled driver import it from here, not straight from core-proxy/dist -- esbuild inlines
+// this bundled driver import it from here, not straight from core-auth/dist -- esbuild inlines
 // a separate copy of the class per bundle, so importing from two different bundles gives two
 // different (non-instanceof-compatible) classes.
 export { HandleIrError };
@@ -96,6 +81,30 @@ async function handleIr(ir, ctx) {
   });
 }
 
+// One schema drives both the loader-TUI settings.groups and the Cairn capabilities
+// fields (see index.ts), so the two surfaces can never drift out of key-set sync.
+// account_selection_strategy is deliberately NOT in this schema: it is core-auth's
+// own COMMON_PROVIDER_CAPABILITIES/COMMON_PROVIDER_DEFAULTS field, shared verbatim by
+// every provider, so it stays wired into settings.groups below exactly as before.
+export const STUB_SETTINGS_SCHEMA = [
+  { title: "General", fields: [
+    { key: "logging", label: "Logging", type: "bool", hint: "Write this plugin's log file." },
+  ] },
+  { title: "Response", fields: [
+    { key: "response_text", label: "Canned response", type: "multiline", hint: "The text every stub reply returns." },
+    { key: "model_count", label: "Advertised models", type: "number", min: 1, hint: "How many stub models to expose." },
+  ] },
+  { title: "Simulation", fields: [
+    { key: "latency_ms", label: "Simulated latency (ms)", type: "number", min: 0, hint: "Artificial delay before replying." },
+    { key: "fail_rate", label: "Failure rate", type: "number", min: 0, max: 1, step: 0.05, hint: "0 = never fail, 1 = always fail." },
+    { key: "streaming", label: "Streaming", type: "enum", options: [
+      { value: "null", label: "Honor request" },
+      { value: "true", label: "Force on" },
+      { value: "false", label: "Force off" },
+    ] },
+  ] },
+];
+
 export const driver = {
   id: "stub",
   label: "Stub",
@@ -110,15 +119,11 @@ export const driver = {
   handleIr,
   loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth), completes immediately.", complete: async () => stubAddAccount() }),
   accounts: accountControllerFromManager(accountManager, { login: async () => { const a = stubAddAccount(); return { id: a.id, email: a.email, status: "active", enabled: true }; } }),
-  // Even the stub exposes a Settings entry in its auth menu: the Response group is
+  // Even the stub exposes a Settings entry in its auth menu: Response/Simulation are
   // wired to what handleIr actually reads; Account rotation drives the core selection.
   settings: {
     groups: [
-      { title: "Response", fields: [
-        { key: "response_text", label: "Response text", type: "string", hint: "What the stub replies with." },
-        { key: "latency_ms", label: "Latency (ms)", type: "number", min: 0, hint: "Artificial delay before replying." },
-        { key: "fail_rate", label: "Failure rate", type: "number", min: 0, max: 1, hint: "0–1 chance of a simulated overload error." },
-      ] },
+      ...toSettingsGroups(STUB_SETTINGS_SCHEMA),
       { title: "Account rotation", fields: [
         { key: "account_selection_strategy", label: "Account selection", type: "enum", options: ["sticky", "round-robin", "hybrid"], hint: "How accounts are picked (rotation lives in core-auth). Applies next launch." },
       ] },
