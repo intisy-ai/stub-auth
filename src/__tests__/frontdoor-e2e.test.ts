@@ -1,29 +1,49 @@
-// End-to-end wire-parity through the loader-injected front-door: proves stub-auth's generic
-// createProviderPlugin (core-auth) resolves the opencode-loader-owned AppFrontDoor at runtime and
-// serves a real Anthropic-wire response, all in-process, with no daemon and no bundled front-door
-// of its own. Requires opencode-loader's dist/frontdoor.js to be built; skips (with a log) otherwise,
+// End-to-end proof of the generic deployed front-door: opencode-proxy's own deployFrontDoor
+// copies its built adapter to <home>/frontdoor/app-frontdoor.mjs, and stub-auth's generic
+// createProviderPlugin (core-auth) resolves it via HUB_CONFIG_DIR alone (no HUB_APP_FRONTDOOR,
+// no opencode-loader), serving a real Anthropic-wire response in-process with no daemon. Requires
+// opencode-proxy's dist/index.js + dist/frontdoor.mjs to be built; skips (with a log) otherwise,
 // since the per-repo unit tests already cover each half of this wiring independently.
-import { describe, it, expect, beforeAll } from "vitest";
-import { existsSync } from "node:fs";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 // @ts-ignore build artifact (produced by `npm run build`)
 import { createProviderPlugin } from "../../core-auth/dist/index.js";
 // @ts-ignore build artifact (produced by `npm run build`)
 import { driver } from "../../dist/driver.js";
 
-const frontDoorPath = join(process.cwd(), "..", "..", "loaders", "opencode-loader", "dist", "frontdoor.js");
-const hasFrontDoor = existsSync(frontDoorPath);
+const opencodeProxyIndexPath = join(process.cwd(), "..", "..", "proxies", "opencode-proxy", "dist", "index.js");
+const hasOpencodeProxy = existsSync(opencodeProxyIndexPath);
 
-if (!hasFrontDoor) {
-  console.warn(`[frontdoor-e2e] skipping: opencode-loader dist not built at ${frontDoorPath} (run "npm run build" in loaders/opencode-loader)`);
+if (!hasOpencodeProxy) {
+  console.warn(`[frontdoor-e2e] skipping: opencode-proxy dist not built at ${opencodeProxyIndexPath} (run "npm run build" in proxies/opencode-proxy)`);
 }
 
-describe.skipIf(!hasFrontDoor)("OpenCode in-process front-door (loader-injected)", () => {
-  beforeAll(() => {
-    process.env.HUB_APP_FRONTDOOR = frontDoorPath;
+describe.skipIf(!hasOpencodeProxy)("OpenCode in-process front-door (generic deployed path, no loader)", () => {
+  let home: string;
+  let prevHubConfigDir: string | undefined;
+  let prevHubAppFrontDoor: string | undefined;
+
+  beforeAll(async () => {
+    const { deployFrontDoor } = await import(opencodeProxyIndexPath);
+    home = mkdtempSync(join(tmpdir(), "fd-e2e-"));
+    deployFrontDoor(home);
+
+    prevHubConfigDir = process.env.HUB_CONFIG_DIR;
+    prevHubAppFrontDoor = process.env.HUB_APP_FRONTDOOR;
+    delete process.env.HUB_APP_FRONTDOOR;
+    process.env.HUB_CONFIG_DIR = home;
   });
 
-  it("serves a stub chat request as Anthropic wire via the injected front-door", async () => {
+  afterAll(() => {
+    if (prevHubConfigDir === undefined) delete process.env.HUB_CONFIG_DIR;
+    else process.env.HUB_CONFIG_DIR = prevHubConfigDir;
+    if (prevHubAppFrontDoor !== undefined) process.env.HUB_APP_FRONTDOOR = prevHubAppFrontDoor;
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("serves a stub chat request as Anthropic wire via the generic deployed front-door", async () => {
     const plugin = createProviderPlugin(driver);
     const hooks = await plugin({ client: null });
     const loaded = await hooks.auth.loader();
