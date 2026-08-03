@@ -6,13 +6,6 @@ import { defineProviderPlugin, COMMON_PROVIDER_CAPABILITIES, COMMON_PROVIDER_DEF
 import { driver, STUB_SETTINGS_SCHEMA } from "./driver.js";
 import { deployCommands, defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli } from "../core/src/index.js";
 import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
-import { serveDirect } from "../opencode-proxy/dist/index.js";
-
-// Inject the OpenCode front-door here (not in driver.ts) so it is scoped to this OpenCode
-// entry's bundle and stays out of the handler/javaProvider bundles. core-auth's
-// createOpencodePlugin reads def.serveDirect and, when no out-of-process proxy is
-// configured, calls def.serveDirect(request, def.handleIr, ctx) to serve offline in-process.
-driver.serveDirect = serveDirect;
 
 export const StubProvider = await defineProviderPlugin({
   name: "stub-auth",
