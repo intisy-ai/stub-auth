@@ -108,8 +108,8 @@ export const STUB_SETTINGS_SCHEMA = [
 export const driver = {
   id: "stub",
   label: "Stub",
-  opencodeProvider: "stub",
-  opencodeNpm: "@ai-sdk/anthropic",
+  appProviderId: "stub",
+  appNpm: "@ai-sdk/anthropic",
   models: stubModelsSeed,
   async fetchModels() {
     const cfg = defineConfig("stub-auth", {});
