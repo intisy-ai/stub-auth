@@ -4,10 +4,15 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups } from "../core-auth/dist/index.js";
-import { defineConfig, getConfigValue, setConfigValue } from "../core/src/index.js";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter } from "../core-auth/dist/index.js";
+import { defineConfig, getConfigValue, setConfigValue, emitEvent } from "../core/src/index.js";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
+
+// This module owns the AccountManager (addAccount can emit account activity) and is bundled
+// independently into dist/driver.js as well as dist/index.js and dist/handler.js, each with its
+// own copy of core-auth's module-level emitter, so it needs its own one-time wiring.
+setActivityEmitter((spec, source) => emitEvent(spec, source));
 
 // Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
 // this bundled driver import it from here, not straight from core-auth/dist -- esbuild inlines
