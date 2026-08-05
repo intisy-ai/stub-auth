@@ -12,10 +12,6 @@ dependencies {
     // implementation-visibility rule), which is what the TeaVM transpile step needs.
     implementation project(":ir")
 
-    // AnthropicTranslator lives in the anthropic-translator submodule, not :ir; testImplementation
-    // keeps it off the thin shipped jar.
-    testImplementation project(":anthropic")
-
     // Test-only: constructs a real AiJava/ProviderRegistry (via the includeBuild composite in
     // ../settings.gradle) to prove this module's OWN built jar dynamically loads and routes a
     // request end to end. io.github.intisy:jvm's api dependencies (:routing/:accounts) come

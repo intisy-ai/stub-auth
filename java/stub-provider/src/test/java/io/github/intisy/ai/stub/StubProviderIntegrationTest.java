@@ -1,6 +1,13 @@
 package io.github.intisy.ai.stub;
 
-import io.github.intisy.ai.ir.translators.anthropic.AnthropicTranslator;
+import io.github.intisy.ai.ir.Block;
+import io.github.intisy.ai.ir.IrMessage;
+import io.github.intisy.ai.ir.IrRequest;
+import io.github.intisy.ai.ir.IrResponse;
+import io.github.intisy.ai.ir.TextBlock;
+import io.github.intisy.ai.ir.spi.StreamDecoder;
+import io.github.intisy.ai.ir.spi.StreamEncoder;
+import io.github.intisy.ai.ir.spi.Translator;
 import io.github.intisy.ai.jvm.AiJava;
 import io.github.intisy.ai.jvm.Storage;
 import io.github.intisy.ai.jvm.backend.json.GsonJsonCodec;
@@ -16,8 +23,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -70,7 +80,7 @@ class StubProviderIntegrationTest {
             assertTrue(resp.body.contains("(served by m-stub)"),
                     "expected the stubText() suffix naming the routed model: " + resp.body);
             assertTrue(resp.body.contains("\"usage\":{\"input_tokens\":1,\"output_tokens\":12}"),
-                    "usage block should be the Anthropic-wire encoding the front-door produces: " + resp.body);
+                    "usage block should be the wire encoding the front door produces: " + resp.body);
         }
     }
 
@@ -98,12 +108,13 @@ class StubProviderIntegrationTest {
 
     private static RoutingProfile profile() {
         RoutingProfile p = new RoutingProfile();
-        // The provider is IR-native (no app-wire handle()), so the front-door must supply
-        // an app<->IR translator, exactly as the real anthropicProfile does. With it set, the
-        // Router decodes the inbound Anthropic wire to IR, calls the provider's handleIr, and
-        // encodes the IrResponse back to wire. Without it the Router would hit Provider's throwing
-        // handle() default.
-        p.translator = new AnthropicTranslator(new RoutingJsonCodecAdapter(new GsonJsonCodec()));
+        // The provider is IR-native (no app-wire handle()), so the front-door must supply an
+        // app<->IR translator, exactly as a real profile does. With it set, the Router decodes the
+        // inbound wire to IR, calls the provider's handleIr, and encodes the IrResponse back.
+        // Without it the Router would hit Provider's throwing handle() default. Which vendor speaks
+        // the wire is irrelevant here (each real translator is tested in its own repo), so this
+        // supplies a minimal one and asserts on the fields it writes.
+        p.translator = new WireTranslator(new GsonJsonCodec());
         p.configFile = CONFIG_FILE;
         p.routingKey = "providerRouting";
         p.tierSourceProvider = "stub";
@@ -139,23 +150,89 @@ class StubProviderIntegrationTest {
         return req;
     }
 
-    /** Adapts the routing SPI's {@code JsonCodec} to core-ir's own, same-shaped one, so this test can
-     * build the front-door's {@link AnthropicTranslator} the way a real profile does. */
-    private static final class RoutingJsonCodecAdapter implements io.github.intisy.ai.ir.spi.JsonCodec {
-        private final io.github.intisy.ai.shared.spi.JsonCodec delegate;
+    /**
+     * Minimal app<->IR translator for the front door: decodes the inbound request's model, and
+     * encodes the provider's response as {@code id/model/content/stop_reason/usage} (the fields
+     * this test asserts on). Streaming is out of scope here, so those decoders refuse rather than
+     * pretend.
+     */
+    private static final class WireTranslator implements Translator {
+        private final io.github.intisy.ai.shared.spi.JsonCodec codec;
 
-        RoutingJsonCodecAdapter(io.github.intisy.ai.shared.spi.JsonCodec delegate) {
-            this.delegate = delegate;
+        WireTranslator(io.github.intisy.ai.shared.spi.JsonCodec codec) {
+            this.codec = codec;
         }
 
         @Override
-        public Object parse(String json) {
-            return delegate.parse(json);
+        public IrRequest decodeRequest(String wireJson) {
+            Object parsed = codec.parse(wireJson);
+            IrRequest request = new IrRequest();
+            request.messages = new ArrayList<>();
+            if (parsed instanceof Map) {
+                Map<?, ?> root = (Map<?, ?>) parsed;
+                Object model = root.get("model");
+                request.model = model == null ? null : String.valueOf(model);
+                request.stream = Boolean.TRUE.equals(root.get("stream"));
+                Object messages = root.get("messages");
+                if (messages instanceof List) {
+                    for (Object entry : (List<?>) messages) {
+                        if (!(entry instanceof Map)) continue;
+                        Map<?, ?> message = (Map<?, ?>) entry;
+                        List<Block> content = new ArrayList<>();
+                        content.add(new TextBlock(String.valueOf(message.get("content"))));
+                        request.messages.add(new IrMessage(String.valueOf(message.get("role")), content));
+                    }
+                }
+            }
+            return request;
         }
 
         @Override
-        public String stringify(Object value) {
-            return delegate.stringify(value);
+        public String encodeRequest(IrRequest request) {
+            Map<String, Object> root = new LinkedHashMap<>();
+            root.put("model", request.model);
+            return codec.stringify(root);
+        }
+
+        @Override
+        public IrResponse decodeResponse(String wireJson) {
+            throw new UnsupportedOperationException("the front door never decodes a response in this test");
+        }
+
+        @Override
+        public String encodeResponse(IrResponse response) {
+            Map<String, Object> root = new LinkedHashMap<>();
+            root.put("id", response.id);
+            root.put("model", response.model);
+            List<Object> content = new ArrayList<>();
+            if (response.content != null) {
+                for (Block block : response.content) {
+                    if (!(block instanceof TextBlock)) continue;
+                    Map<String, Object> encoded = new LinkedHashMap<>();
+                    encoded.put("type", "text");
+                    encoded.put("text", ((TextBlock) block).text);
+                    content.add(encoded);
+                }
+            }
+            root.put("content", content);
+            root.put("stop_reason", response.stopReason);
+            if (response.usage != null) {
+                Map<String, Object> usage = new LinkedHashMap<>();
+                usage.put("input_tokens", response.usage.inputTokens);
+                usage.put("output_tokens", response.usage.outputTokens);
+                root.put("usage", usage);
+            }
+            return codec.stringify(root);
+        }
+
+        @Override
+        public StreamDecoder newStreamDecoder() {
+            throw new UnsupportedOperationException("streaming is covered by the vendor translators' own tests");
+        }
+
+        @Override
+        public StreamEncoder newStreamEncoder() {
+            throw new UnsupportedOperationException("streaming is covered by the vendor translators' own tests");
         }
     }
 }
