@@ -32,12 +32,6 @@ include ":stub-teavm"
 include ":ir"
 project(":ir").projectDir = file("../core-ir/java/ir")
 
-// :anthropic - the Anthropic translator (AnthropicTranslator etc.), aliased the same way from the
-// anthropic-translator submodule (../anthropic-translator/java/anthropic), a DIRECT submodule of
-// stub-auth like core-ir.
-include ":anthropic"
-project(":anthropic").projectDir = file("../anthropic-translator/java/anthropic")
-
 // ---- test-only composite build -------------------------------------------------------------
 // Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
 // AiJava/ProviderRegistry and route a request through the jar this build produces -- proving
