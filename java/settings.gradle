@@ -1,5 +1,7 @@
 rootProject.name = "stub-auth-java"
 
+apply from: file("../core/gradle/submodule-modules.gradle")
+
 // stub-auth's Java side: a thin Provider module for core-proxy's Provider SPI, proven
 // dynamically-loadable by ai-java's ProviderRegistry (ServiceLoader over a directory of jars).
 //
@@ -8,15 +10,13 @@ rootProject.name = "stub-auth-java"
 // way ai-java's own root settings.gradle aliases it (project path preserved, just a different
 // projectDir) so the SAME technique/coordinates line up on both sides of the composite build
 // below.
-include ":routing"
-project(":routing").projectDir = file("../core-proxy/java/routing")
+includeFromSubmodule ":routing", "core-proxy"
 
 // :teavm - core-proxy's own TeaVM js-base (SimpleJsonCodec/JsHttpClientBridge/JsStoreBridge/
 // CoreProxyJs), aliased in exactly like :routing above so :stub-teavm (Task 5) can depend on it
 // with a plain project(":teavm") reference and reuse SimpleJsonCodec rather than duplicate it --
 // mirrors core-auth's own settings.gradle aliasing of core-proxy's :routing/:teavm.
-include ":teavm"
-project(":teavm").projectDir = file("../core-proxy/java/teavm")
+includeFromSubmodule ":teavm", "core-proxy"
 
 include ":stub-provider"
 
@@ -29,8 +29,7 @@ include ":stub-teavm"
 // exactly like :routing/:teavm above so stub-provider can build its canned response through
 // core-ir instead of hand-writing Anthropic-format JSON. core-ir is a DIRECT submodule of
 // stub-auth (../core-ir from here, i.e. stub-auth/core-ir).
-include ":ir"
-project(":ir").projectDir = file("../core-ir/java/ir")
+includeFromSubmodule ":ir", "core-ir"
 
 // ---- test-only composite build -------------------------------------------------------------
 // Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
