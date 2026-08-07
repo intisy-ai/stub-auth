@@ -2,8 +2,8 @@
 // Claude entry: the provider surface the claude-code-loader proxy imports for the active
 // provider. Exposes the IR-native handleIr; the front-door owns app<->IR translation.
 
-import { providerHandlerExports, setActivityEmitter } from "../core-auth/dist/index.js";
-import { emitEvent } from "../core/src/index.js";
+import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/core-auth";
+import { emitEvent } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 
 // This bundle (dist/handler.js) is loaded independently of dist/index.js (the Claude proxy

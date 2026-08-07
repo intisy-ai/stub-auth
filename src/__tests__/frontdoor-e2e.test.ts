@@ -9,7 +9,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // @ts-ignore build artifact (produced by `npm run build`)
-import { createProviderPlugin } from "../../core-auth/dist/index.js";
+import { createProviderPlugin } from "@intisy-ai/core-auth";
 // @ts-ignore build artifact (produced by `npm run build`)
 import { driver } from "../../dist/driver.js";
 

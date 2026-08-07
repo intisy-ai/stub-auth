@@ -1,8 +1,8 @@
 // @ts-nocheck
 // Cross-app slash-commands for stub-auth: the reference example for how a
 // provider exposes its config + a namespaced action through core's command framework.
-import { configCommand, runConfigCli } from "../core/src/index.js";
-import { printAccounts } from "../core-auth/dist/index.js";
+import { configCommand, runConfigCli } from "@intisy-ai/core";
+import { printAccounts } from "@intisy-ai/core-auth";
 import { driver } from "./driver.js";
 
 export const STUB_COMMANDS = [
