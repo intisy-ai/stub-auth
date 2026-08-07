@@ -4,8 +4,8 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter } from "../core-auth/dist/index.js";
-import { defineConfig, getConfigValue, setConfigValue, emitEvent } from "../core/src/index.js";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter } from "@intisy-ai/core-auth";
+import { defineConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
 

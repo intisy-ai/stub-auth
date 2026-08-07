@@ -2,9 +2,9 @@
 // OpenCode entry (the deployed plugin file). core-auth registers the native
 // provider + auth method and routes requests to driver.handleIr.
 
-import { defineProviderPlugin, COMMON_PROVIDER_CAPABILITIES, COMMON_PROVIDER_DEFAULTS, toCapabilitiesFields, setActivityEmitter } from "../core-auth/dist/index.js";
+import { defineProviderPlugin, COMMON_PROVIDER_CAPABILITIES, COMMON_PROVIDER_DEFAULTS, toCapabilitiesFields, setActivityEmitter } from "@intisy-ai/core-auth";
 import { driver, STUB_SETTINGS_SCHEMA } from "./driver.js";
-import { deployCommands, defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, emitEvent } from "../core/src/index.js";
+import { deployCommands, defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, emitEvent } from "@intisy-ai/core";
 import { STUB_COMMANDS, maybeRunCli } from "./commands.js";
 
 // Best-effort: let core-auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
