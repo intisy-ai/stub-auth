@@ -68,3 +68,6 @@ export const StubProvider = await defineProviderPlugin({
   },
   commands: STUB_COMMANDS,
 });
+
+// StubProvider stays exported too: OpenCode invokes every exported function, while an api host reads the default.
+export { default } from "./plugin.js";
