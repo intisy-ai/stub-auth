@@ -1,0 +1,13 @@
+{
+  "$schema": "./core/api/schema/plugin.schema.json",
+  "id": "stub-auth",
+  "api": 1,
+  "entry": "dist/plugin.js",
+  "displayName": "Stub",
+  "capabilities": ["provider"],
+  "repo": {
+    "role": "Example reference provider",
+    "category": "ai-provider",
+    "tech": "typescript"
+  }
+}
