@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -95,14 +96,18 @@ class StubProviderIntegrationTest {
     private static Path builtStubProviderJar() {
         String injected = System.getProperty("stubProviderJar");
         if (injected != null && !injected.isEmpty()) {
-            return Path.of(injected);
+            return Paths.get(injected);
         }
-        return Path.of("build", "libs", "stub-provider-0.1.0.jar");
+        return Paths.get("build", "libs", "stub-provider-0.1.0.jar");
     }
 
     private static void copy(Path from, Path to) throws IOException {
         try (InputStream in = Files.newInputStream(from); OutputStream out = Files.newOutputStream(to)) {
-            in.transferTo(out);
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
         }
     }
 
