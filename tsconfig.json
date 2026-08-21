@@ -17,7 +17,7 @@
     "paths": {
       "@intisy-ai/core": ["./core/dist/index.d.ts"],
       "@intisy-ai/core-auth": ["./core-auth/dist/index.d.ts"],
-      "@intisy-ai/api": ["./core/api/dist/index.d.ts"]
+      "@intisy-ai/api": ["./core/api/generated/api.keys.d.ts"]
     },
     "types": ["node"],
     "lib": ["esnext"]
