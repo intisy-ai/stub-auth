@@ -6,8 +6,9 @@ function contextSpy() {
   return {
     provided,
     context: {
-      provide: vi.fn((id: string, implementation: unknown) => {
-        provided[id] = implementation;
+      // Keyed by id, not by the argument, because a typed key is an object and the host records the id.
+      provide: vi.fn((key: string | { id: string }, implementation: unknown) => {
+        provided[typeof key === "string" ? key : key.id] = implementation;
       }),
       paths: { home: "/tmp/home" },
     },
