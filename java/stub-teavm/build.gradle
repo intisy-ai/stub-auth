@@ -13,11 +13,11 @@ dependencies {
     // to us, so :routing is declared again below for the SPI types (JsonCodec) StubProviderJs
     // references directly.
     implementation project(":stub-provider")
-    implementation project(":routing")
+    implementation project(":spi")
     // core-proxy's own :teavm js-base (SimpleJsonCodec) -- reused rather than duplicated;
     // StubProviderJs lives in the SAME package (io.github.intisy.ai.js) so it can reference
     // SimpleJsonCodec unqualified, exactly like core-auth's CoreAuthJs does.
-    implementation project(":teavm")
+    implementation project(":js-base")
     teavm teavm.libs.jsoApis
 }
 

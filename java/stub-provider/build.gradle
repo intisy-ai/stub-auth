@@ -4,7 +4,7 @@ dependencies {
     // Provider/ProxyHandler/HandlerCtx/HttpRequest/HttpResponse classes loaded) -- compileOnly
     // keeps this jar THIN: `./gradlew :stub-provider:jar` must NOT bundle
     // io/github/intisy/ai/shared/routing/Provider.class (or any other :routing class) inside it.
-    compileOnly project(":routing")
+    compileOnly project(":spi")
 
     // core-ir's IR types come from :ir, not from the host at runtime, so this is a normal
     // `implementation` dependency (not compileOnly) -- it stays on :stub-provider's own runtime

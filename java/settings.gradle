@@ -6,31 +6,28 @@ rootProject.name = "stub-auth-java"
 
 apply from: file("../core/gradle/submodule-modules.gradle")
 
-// stub-auth's Java side: a thin Provider module for core-proxy's Provider SPI, proven
+// stub-auth's Java side: a thin Provider module for the plugin-to-host Provider SPI, proven
 // dynamically-loadable by ai-java's ProviderRegistry (ServiceLoader over a directory of jars).
 //
-// core-proxy is a DIRECT submodule of stub-auth (../core-proxy from here, i.e.
-// stub-auth/core-proxy) -- not core-auth's own nested copy. :routing is aliased in exactly the
-// way ai-java's own root settings.gradle aliases it (project path preserved, just a different
-// projectDir) so the SAME technique/coordinates line up on both sides of the composite build
-// below.
-includeFromSubmodule ":routing", "core-proxy"
+// :spi is the contract itself, from the core-contracts submodule (../core-contracts from here). It
+// is aliased with the project path preserved and only projectDir differing, the ecosystem
+// convention, so the same coordinates line up on both sides of the composite build below. A
+// provider carries no proxy: the routing engine is a different consumer of this same contract.
+includeFromSubmodule ":spi", "core-contracts"
 
-// :teavm - core-proxy's own TeaVM js-base (SimpleJsonCodec/JsHttpClientBridge/JsStoreBridge/
-// CoreProxyJs), aliased in exactly like :routing above so :stub-teavm (Task 5) can depend on it
-// with a plain project(":teavm") reference and reuse SimpleJsonCodec rather than duplicate it --
-// mirrors core-auth's own settings.gradle aliasing of core-proxy's :routing/:teavm.
-includeFromSubmodule ":teavm", "core-proxy"
+// :js-base - the TeaVM implementations of :spi's host-injected services (SimpleJsonCodec and
+// friends), aliased like :spi above so :stub-teavm can reference them with a plain
+// project(":js-base") dependency and reuse the source rather than duplicating it.
+includeFromSubmodule ":js-base", "core-contracts"
 
 include ":stub-provider"
 
 // :stub-teavm - TeaVM JS export surface over :stub-provider (StubProviderJs) -> generateJavaScript
-// emits an ES2015 module (stub-provider.js). Reuses :teavm's js-base instead of duplicating it,
-// mirroring core-auth's :auth-teavm exactly (Task 5's js half of the shared-Java model).
+// emits an ES2015 module (stub-provider.js). Reuses :js-base instead of duplicating it.
 include ":stub-teavm"
 
 // :ir - core-ir's canonical IR types + vendor translators (AnthropicTranslator etc.), aliased in
-// exactly like :routing/:teavm above so stub-provider can build its canned response through
+// exactly like :spi/:js-base above so stub-provider can build its canned response through
 // core-ir instead of hand-writing Anthropic-format JSON. core-ir is a DIRECT submodule of
 // stub-auth (../core-ir from here, i.e. stub-auth/core-ir).
 includeFromSubmodule ":ir", "core-ir"
