@@ -1,0 +1,53 @@
+import org.teavm.gradle.api.JSModuleType
+import org.teavm.gradle.api.OptimizationLevel
+
+plugins {
+    id "org.teavm" version "0.15.0"
+}
+
+dependencies {
+    // StubProviderJs reuses StubProvider's transpilable core verbatim rather than re-deriving the
+    // canned response shape. :stub-provider only compileOnly's :auth-contracts, which does not
+    // propagate, so the Provider vocabulary is declared again here.
+    implementation project(":stub-provider")
+    implementation project(":auth-contracts")
+    // :stub-provider keeps :ir `implementation`, which does not propagate, and StubProvider's
+    // supertype chain reaches IrHandler, so this compile step needs it declared again.
+    implementation project(":ir")
+    // :seam and :js-base carry api's seam implementations (SimpleJsonCodec and the JSO bridges),
+    // reused rather than duplicated: every implementation here is a copy embedded in this bundle.
+    implementation project(":seam")
+    implementation project(":js-base")
+    teavm teavm.libs.jsoApis
+}
+
+// The root subprojects{} block pins Java 8 (sourceCompatibility/targetCompatibility +
+// compileJava --release 8) for portability of :stub-provider. TeaVM 0.15.0's own classlib/
+// jso-apis/extension-spi artifacts publish a minimum JVM-version metadata of 11-17, so
+// :stub-teavm needs a newer compile target than :stub-provider -- override both the extension's
+// compatibility (fixes Gradle's dependency-resolution JVM-version attribute matching) and the
+// compileJava task's --release option. Mirrors core-auth's auth-teavm/build.gradle exactly
+// (which itself mirrors core-proxy/java/teavm/build.gradle and ai-java's original js/build.gradle).
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.named("compileJava") {
+    options.release = 17
+}
+
+// Same JVM-version attribute matching problem as compileJava, now that the root block also
+// pins compileTestJava to release 8: this module's test dependencies (teavm-junit, project :teavm)
+// require 17.
+tasks.named("compileTestJava") {
+    options.release = 17
+}
+
+teavm.js {
+    mainClass = "io.github.intisy.ai.js.StubProviderJs"
+    moduleType = JSModuleType.ES2015
+    obfuscated = false
+    optimization = OptimizationLevel.NONE
+    targetFileName = "stub-provider.js"
+}

@@ -1,0 +1,53 @@
+plugins {
+    id "org.gradle.toolchains.foojay-resolver-convention" version "0.8.0"
+}
+
+rootProject.name = "stub-auth-java"
+
+apply from: file("core/gradle/submodule-modules.gradle")
+
+// :ir - core-ir's canonical IR types and the IrHandler seam a provider implements. Reached through
+// this repo's own core-ir submodule, which is also what src/ imports, so the Java and TypeScript
+// views of core-ir cannot drift.
+includeFromSubmodule ":ir", "core-ir"
+
+// :annotations, :processor, :contract, :seam and :js-base come from api, reached through core-ir's
+// own api submodule because :ir exports api's seam types in HandlerCtx's public fields, so every
+// module in this build must resolve api at the same coordinates.
+includeFromSubmodule ":annotations", "core-ir/api"
+includeFromSubmodule ":processor", "core-ir/api"
+includeFromSubmodule ":contract", "core-ir/api"
+includeFromSubmodule ":seam", "core-ir/api"
+includeFromSubmodule ":js-base", "core-ir/api"
+
+// :auth-contracts - the provider vocabulary core-auth mints: Provider itself plus the config,
+// catalog and quota capabilities StubProvider implements.
+includeFromSubmodule ":auth-contracts", "core-auth"
+
+// :stub-provider - a thin Provider implementation, proven dynamically loadable by ai-java's
+// ProviderRegistry (ServiceLoader over a directory of jars). A provider carries no proxy.
+include ":stub-provider"
+
+// :stub-teavm - TeaVM JS export surface over :stub-provider (StubProviderJs) -> generateJavaScript
+// emits an ES2015 module (stub-provider.js). Reuses :js-base instead of duplicating it.
+include ":stub-teavm"
+
+// ---- test-only composite build -------------------------------------------------------------
+// Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
+// AiJava/ProviderRegistry and route a request through the jar this build produces -- proving
+// dynamic loading end-to-end without ai-java ever being told stub-auth exists (pure ServiceLoader
+// discovery). This is a LOCAL DEV-ONLY path: ai-java is not published anywhere, so this only
+// works when both repos are checked out side by side on the same machine. Override the location
+// with -PaiJavaDir=<path> if your checkout isn't at the default.
+//
+// Gradle composite builds keep each build's project-path namespace separate, so ai-java's own
+// differently-aliased projects do not collide with the paths declared above -- they're resolved
+// via group:module dependency substitution (io.github.intisy:jvm), not by project path.
+def aiJavaDir = file(providers.gradleProperty("aiJavaDir").getOrElse("F:/Documents/GitHub/ai/java/ai-java"))
+if (aiJavaDir.isDirectory()) {
+    includeBuild(aiJavaDir)
+} else {
+    logger.warn("stub-auth java: ai-java not found at ${aiJavaDir} -- the includeBuild-based " +
+            "integration test (StubProviderIntegrationTest) will fail to resolve io.github.intisy:jvm. " +
+            "Pass -PaiJavaDir=<path-to-ai-java> to point at a different checkout.")
+}
