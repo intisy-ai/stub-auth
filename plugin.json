@@ -31,5 +31,10 @@
     "role": "Example reference provider",
     "category": "ai-provider",
     "tech": "typescript"
+  },
+  "services": {
+    "consumes": [
+      "provider-support"
+    ]
   }
 }
