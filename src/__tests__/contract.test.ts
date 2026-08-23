@@ -6,7 +6,7 @@ runPluginContract({
   entry: "dist/index.js",
   configName: "stub-auth",
   app: "both",
-  commands: ["stub-auth-config", "stub-accounts"],
+  commands: ["stub-accounts"],
   deploy: "load",
   actions: [["accounts"]],
   readme: true,

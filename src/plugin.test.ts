@@ -11,15 +11,17 @@ function contextSpy() {
         provided[typeof key === "string" ? key : key.id] = implementation;
       }),
       paths: { home: "/tmp/home" },
+      // The engine mints a typed key from an id alone, which is all the plugin needs from it here.
+      capability: (id: string) => ({ id }),
     },
   };
 }
 
 describe("the stub-auth api plugin", () => {
-  it("provides exactly the provider capability its manifest declares", async () => {
+  it("provides exactly the capabilities its manifest declares", async () => {
     const { context, provided } = contextSpy();
     await plugin.activate(context as never);
-    expect(Object.keys(provided)).toEqual(["provider"]);
+    expect(Object.keys(provided).sort()).toEqual(["provider", "settings"]);
   });
 
   it("names the driver's own provider id", async () => {

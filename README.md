@@ -54,7 +54,7 @@ After installing, pick **Stub** in the loader's Providers tab (`cc auth`) or run
 
 ## Configuration
 
-Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-auth-config set`).
+Config file: `<configDir>/config/stub-auth.json` (edit it directly, or through whatever settings surface the app offers).
 
 ```json
 {
@@ -82,7 +82,6 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 
 | Command | Description | Arguments |
 | --- | --- | --- |
-| `/stub-auth-config` | View and change stub-auth configuration | `list | get <key> | set <key> <value>` |
 | `/stub-accounts` | List stub-auth demo accounts |  |
 
 ## Dependencies

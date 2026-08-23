@@ -5,7 +5,7 @@
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
 import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter } from "@intisy-ai/core-auth";
-import { defineConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
+import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
 
@@ -31,7 +31,7 @@ function stubAddAccount() {
 }
 
 function readResponseConfig() {
-  const cfg = defineConfig("stub-auth", {});
+  const cfg = loadConfig("stub-auth", getAppConfigDir());
   return {
     responseText: typeof cfg.response_text === "string" ? cfg.response_text : undefined,
     latencyMs: typeof cfg.latency_ms === "number" ? cfg.latency_ms : 0,
@@ -117,7 +117,7 @@ export const driver = {
   appNpm: "@ai-sdk/anthropic",
   models: stubModelsSeed,
   async fetchModels() {
-    const cfg = defineConfig("stub-auth", {});
+    const cfg = loadConfig("stub-auth", getAppConfigDir());
     const count = typeof cfg.model_count === "number" ? cfg.model_count : 3;
     try { return { models: await buildModelsViaJava(count) }; } catch { return null; }
   },
