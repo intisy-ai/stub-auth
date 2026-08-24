@@ -12,13 +12,6 @@
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    // Compiled from the submodules, not installed, so each specifier maps to its built output. api
-    // is TYPE-ONLY: nothing imports its runtime, so none of it reaches the deployed bundle.
-    "paths": {
-      "@intisy-ai/core": ["./core/dist/index.d.ts"],
-      "@intisy-ai/core-auth": ["./core-auth/dist/index.d.ts"],
-      "@intisy-ai/api": ["./core/api/generated/api.keys.d.ts"]
-    },
     "types": ["node"],
     "lib": ["esnext"]
   },
