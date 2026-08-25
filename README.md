@@ -30,9 +30,8 @@ flowchart LR
   - `src/index.ts`, OpenCode entry (`defineProviderPlugin({...})`, core-auth's shared provider prologue).
   - `src/handler.ts`, Claude entry (exposes the IR-native `handleIr` the loader proxy calls).
   - `src/commands.ts`, cross-app slash-commands (the reference example of the command framework).
-  - `core-auth/`, `core/`, git submodules (auth engine; shared config/logging/commands), bundled in.
 - `dist/`
-  - `dist/index.js` + `dist/handler.js`, esbuild bundles the submodules in, producing self-contained entries; not committed.
+  - `dist/index.js` + `dist/handler.js`; not committed. `@intisy-ai/core`, `core-auth` and `core-ir` stay external and resolve from the home's shared library store.
 
 ## Installation
 
@@ -54,7 +53,7 @@ After installing, pick **Stub** in the loader's Providers tab (`cc auth`) or run
 
 ## Configuration
 
-Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-auth-config set`).
+Config file: `<configDir>/config/stub-auth.json` (edit it directly, or through whatever settings surface the app offers).
 
 ```json
 {
@@ -82,7 +81,6 @@ Config file: `<configDir>/config/stub-auth.json` (edit via the loader or `/stub-
 
 | Command | Description | Arguments |
 | --- | --- | --- |
-| `/stub-auth-config` | View and change stub-auth configuration | `list | get <key> | set <key> <value>` |
 | `/stub-accounts` | List stub-auth demo accounts |  |
 
 ## Dependencies
