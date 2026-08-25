@@ -30,9 +30,9 @@ flowchart LR
   - `src/index.ts`, OpenCode entry (`defineProviderPlugin({...})`, core-auth's shared provider prologue).
   - `src/handler.ts`, Claude entry (exposes the IR-native `handleIr` the loader proxy calls).
   - `src/commands.ts`, cross-app slash-commands (the reference example of the command framework).
-  - `core-auth/`, `core/`, git submodules (auth engine; shared config/logging/commands), bundled in.
 - `dist/`
-  - `dist/index.js` + `dist/handler.js`, esbuild bundles the submodules in, producing self-contained entries; not committed.
+  - `dist/index.js` + `dist/handler.js`; not committed. `@intisy-ai/core`, `core-auth` and
+    `core-ir` stay external and resolve from the home's shared library store.
 
 ## Installation
 
