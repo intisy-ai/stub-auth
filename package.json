@@ -1,6 +1,6 @@
 {
   "name": "stub-auth",
-  "version": "1.10.5",
+  "version": "1.10.6",
   "description": "Stub AI provider driver for core-auth: canned responses to validate the auth pipeline; the reference example for building provider plugins.",
   "main": "dist/index.js",
   "type": "module",
@@ -19,6 +19,7 @@
   ],
   "files": [
     "dist/",
+    "plugin.json",
     "README.md",
     "LICENSE"
   ],
@@ -48,12 +49,13 @@
     ]
   },
   "scripts": {
-    "build": "npm --prefix core install && npm --prefix core run build && npm --prefix core-ir install && npm --prefix core-ir run build && node core/teavm-build.mjs --java-dir java --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && npm --prefix core-auth install && npm --prefix core-auth run build && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/javaProvider.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --outfile=dist/javaProvider.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:sync-bridge --outfile=dist/driver.js",
+    "build": "node node_modules/@intisy-ai/api/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/javaProvider.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --outfile=dist/javaProvider.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/driver.js && npx esbuild src/plugin.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/plugin.js",
     "postbuild": "node dist/index.js readme",
     "test": "npm run build && vitest run",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@intisy-ai/api": "^1.0.2",
     "@types/bun": "^1.3.14",
     "@types/node": "^25.9.1",
     "esbuild": "^0.25.0",
@@ -61,7 +63,8 @@
     "vitest": "^3.2.6"
   },
   "dependencies": {
-    "@intisy-ai/core": "file:core",
-    "@intisy-ai/core-auth": "file:core-auth"
+    "@intisy-ai/core": "^2.0.0",
+    "@intisy-ai/core-auth": "^1.4.0",
+    "@intisy-ai/core-ir": "^1.0.3"
   }
 }

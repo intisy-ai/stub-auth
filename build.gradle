@@ -1,0 +1,66 @@
+// stub-auth's Java module, a self-contained Gradle build living alongside stub-auth's TS
+// (../src, ../package.json), same pattern core-proxy's own java/build.gradle uses. Deliberately
+// does NOT reuse ai-java's root build.gradle wholesale (its io.github.intisy.online-gradle preset
+// is ai-java-repo-specific, out of scope here), but DOES apply the same github-gradle publishing
+// recipe ai-java's own root build.gradle uses, scoped to :stub-provider only (the one publishable
+// artifact in this multi-module build).
+plugins {
+    id "io.github.intisy.github-gradle" version "1.10.3" apply false
+}
+
+subprojects {
+    apply plugin: "java-library"
+    apply plugin: "io.github.intisy.github-gradle"
+
+    group = "io.github.intisy"
+    // publishGithub requires a concrete version. Derive it from -Partifact_version=<tag> passed by
+    // CI (stripping a leading "v"), falling back to a local dev version, the same derivation ai-java's
+    // root build.gradle uses.
+    version = (project.findProperty("artifact_version") ?: "0.0.0-dev").toString().replaceFirst(/^v/, "")
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+
+        // 17 is which JDK COMPILES; options.release = 8 below is which JVM RUNS the output. The
+        // floor is 17 because TeaVM 0.15.0's artifacts publish minimum-JVM metadata above 8.
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    // All Java source, main and test alike, must stay within the JDK 1.8 API surface; javac enforces it.
+    tasks.matching { it.name == "compileJava" || it.name == "compileTestJava" }.configureEach {
+        options.release = 8
+    }
+
+    // Source is UTF-8 regardless of the build host's platform charset (Windows defaults to
+    // Windows-1252, which mojibakes non-ASCII literals such as the em dash into the TeaVM output).
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+    }
+
+    dependencies {
+        testImplementation "org.junit.jupiter:junit-jupiter:5.10.1"
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    github {
+        accessToken = System.getenv("GITHUB_TOKEN") ?: ""
+    }
+
+    // Only :stub-provider is a published artifact (the rest are aliased from submodules, and
+    // :stub-teavm is a TeaVM js-export module), so scope publishGithub rather than let an
+    // aggregate `publish` fail on the non-library modules.
+    tasks.matching { it.name == "publishGithub" }.configureEach {
+        onlyIf { project.path == ":stub-provider" }
+    }
+}

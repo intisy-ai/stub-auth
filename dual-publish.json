@@ -1,3 +1,4 @@
 {
-  "jarPublish": "      - run: chmod +x java/gradlew\n      - name: Publish provider jar\n        working-directory: java\n        run: ./gradlew :stub-provider:jar :stub-provider:publishGithub -Partifact_version=${{ github.ref_name }} -x test -x compileTestJava\n        env:\n          GITHUB_TOKEN: ${{ github.token }}\n          GH_TOKEN: ${{ github.token }}"
+  "jarModule": "stub-provider",
+  "generatedReadme": true
 }
