@@ -10,7 +10,7 @@ import io.github.intisy.ai.ir.spi.StreamEncoder;
 import io.github.intisy.ai.ir.spi.Translator;
 import io.github.intisy.ai.jvm.AiJava;
 import io.github.intisy.ai.jvm.Storage;
-import io.github.intisy.ai.jvm.backend.json.GsonJsonCodec;
+import io.github.intisy.ai.seam.jvm.GsonJsonCodec;
 import io.github.intisy.ai.shared.routing.RoutingProfile;
 import io.github.intisy.ai.api.seam.Store;
 import io.github.intisy.ai.api.seam.HttpRequest;
@@ -39,9 +39,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Proves stub-auth's OWN {@code ./gradlew :stub-provider:jar} artifact, not an
  * in-test-classpath fixture but the real built jar from this module, dropped into a directory and
  * discovered purely via {@code ServiceLoader} by ai-java's {@code ProviderRegistry}, then routed
- * a real request through {@code AiJava.router(...)}. ai-java is pulled in as a test-only Gradle
- * composite build ({@code includeBuild}, see {@code ../settings.gradle}); it is never modified
- * to know stub-auth exists; discovery is 100% jar-on-disk + {@code META-INF/services}.
+ * a real request through {@code AiJava.router(...)}. ai-java is a test-only published dependency
+ * and is never modified to know stub-auth exists; discovery is 100% jar-on-disk +
+ * {@code META-INF/services}.
  *
  * <p>The jar path comes from the {@code stubProviderJar} system property the {@code stub-provider}
  * build wires up (see {@code build.gradle}'s {@code test} block: {@code
