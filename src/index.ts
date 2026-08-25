@@ -4,7 +4,7 @@
 
 import { defineProviderPlugin, setActivityEmitter } from "@intisy-ai/core-auth";
 import { driver } from "./driver.js";
-import { defineReadme, maybeRunReadmeCli, emitEvent } from "@intisy-ai/core";
+import { emitEvent } from "@intisy-ai/core";
 import { maybeRunCli } from "./commands.js";
 
 // Best-effort: let core-auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
@@ -13,7 +13,6 @@ setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
 export const StubProvider = await defineProviderPlugin({
   name: "stub-auth",
   driver,
-  core: { defineReadme, maybeRunReadmeCli },
   cliGuard: () => maybeRunCli(),
   readme: {
     description:
