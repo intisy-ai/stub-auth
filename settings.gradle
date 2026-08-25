@@ -11,23 +11,3 @@ include ":stub-provider"
 // :stub-teavm - TeaVM JS export surface over :stub-provider (StubProviderJs) -> generateJavaScript
 // emits an ES2015 module (stub-provider.js). Reuses :js-base instead of duplicating it.
 include ":stub-teavm"
-
-// ---- test-only composite build -------------------------------------------------------------
-// Pulls ai-java's own Gradle build in so stub-provider's integration test can construct a real
-// AiJava/ProviderRegistry and route a request through the jar this build produces -- proving
-// dynamic loading end-to-end without ai-java ever being told stub-auth exists (pure ServiceLoader
-// discovery). This is a LOCAL DEV-ONLY path: ai-java is not published anywhere, so this only
-// works when both repos are checked out side by side on the same machine. Override the location
-// with -PaiJavaDir=<path> if your checkout isn't at the default.
-//
-// Gradle composite builds keep each build's project-path namespace separate, so ai-java's own
-// differently-aliased projects do not collide with the paths declared above -- they're resolved
-// via group:module dependency substitution (io.github.intisy:jvm), not by project path.
-def aiJavaDir = file(providers.gradleProperty("aiJavaDir").getOrElse("../../java/ai-java"))
-if (aiJavaDir.isDirectory()) {
-    includeBuild(aiJavaDir)
-} else {
-    logger.warn("stub-auth java: ai-java not found at ${aiJavaDir} -- the includeBuild-based " +
-            "integration test (StubProviderIntegrationTest) will fail to resolve io.github.intisy:jvm. " +
-            "Pass -PaiJavaDir=<path-to-ai-java> to point at a different checkout.")
-}
