@@ -1,3 +1,4 @@
 {
-  "jarModule": "stub-provider"
+  "jarModule": "stub-provider",
+  "generatedReadme": true
 }
