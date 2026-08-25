@@ -17,21 +17,12 @@ dependencies {
     githubCompileOnly "intisy-ai:api:1.2.0:contract"
     githubTestImplementation "intisy-ai:api:1.2.0:contract"
 
-    // The Provider vocabulary is compileOnly above, which does not reach the test compile
-    // classpath, and :seam supplies the portable JsonCodec the unit tests drive the orchestrator
-    // with rather than pulling the host in for one codec.
+    // The vocabulary above is compileOnly, which does not reach the test compile classpath. The
+    // tests need it twice over: to name these types directly, and because StubProviderIntegrationTest
+    // loads the built jar on a child classloader that resolves them PARENT-first, exactly as a host
+    // does. :seam also supplies the portable codec and store the tests drive the provider with.
     githubTestImplementation "intisy-ai:core-auth:1.0.0:auth-contracts"
     githubTestImplementation "intisy-ai:api:1.2.0:seam"
-
-    // Test-only: constructs a real AiJava/ProviderRegistry to prove this module's OWN built jar
-    // dynamically loads and routes a request end to end. The standalone jar shades the routing and
-    // account engines it needs, and gson, which the codec below resolves against.
-    //
-    // This is the one place a provider names a host, and it is deliberate: the assertion IS "a real
-    // host loads this jar". Relocating it into ai-java, which may reference a provider, is the
-    // follow-up.
-    githubTestImplementation "intisy-ai:ai-java:1.2.0:standalone"
-    githubTestImplementation "intisy-ai:api:1.2.0:jvm-seam"
 }
 
 // Keep the jar filename version-less (stub-provider.jar) even though project.version is now set
