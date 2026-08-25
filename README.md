@@ -31,8 +31,7 @@ flowchart LR
   - `src/handler.ts`, Claude entry (exposes the IR-native `handleIr` the loader proxy calls).
   - `src/commands.ts`, cross-app slash-commands (the reference example of the command framework).
 - `dist/`
-  - `dist/index.js` + `dist/handler.js`; not committed. `@intisy-ai/core`, `core-auth` and
-    `core-ir` stay external and resolve from the home's shared library store.
+  - `dist/index.js` + `dist/handler.js`; not committed. `@intisy-ai/core`, `core-auth` and `core-ir` stay external and resolve from the home's shared library store.
 
 ## Installation
 
