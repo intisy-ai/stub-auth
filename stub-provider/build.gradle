@@ -3,7 +3,7 @@ dependencies {
     // this jar on a URLClassLoader parented to its own, which already has those classes loaded), so
     // compileOnly keeps this jar THIN: `./gradlew :stub-provider:jar` must NOT bundle
     // io/github/intisy/ai/auth/contracts/Provider.class or any other contract class inside it.
-    githubCompileOnly "intisy-ai:core-auth:1.4.0:auth-contracts"
+    githubCompileOnly "intisy-ai:core-auth:1.4.1:auth-contracts"
 
     // core-ir's IR types come from :ir, not from the host at runtime, so this is a normal
     // `implementation` dependency (not compileOnly) -- it stays on :stub-provider's own runtime
@@ -21,7 +21,7 @@ dependencies {
     // tests need it twice over: to name these types directly, and because StubProviderIntegrationTest
     // loads the built jar on a child classloader that resolves them PARENT-first, exactly as a host
     // does. :seam also supplies the portable codec and store the tests drive the provider with.
-    githubTestImplementation "intisy-ai:core-auth:1.4.0:auth-contracts"
+    githubTestImplementation "intisy-ai:core-auth:1.4.1:auth-contracts"
     githubTestImplementation "intisy-ai:api:1.2.0:seam"
 }
 
