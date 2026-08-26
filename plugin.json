@@ -27,14 +27,22 @@
       "streaming": null
     }
   },
-  "repo": {
-    "role": "Example reference provider",
-    "category": "ai-provider",
-    "tech": "typescript"
-  },
   "services": {
     "consumes": [
       "provider-support"
+    ]
+  },
+  "publish": {
+    "jarModule": [
+      "stub-provider"
+    ],
+    "generatedReadme": true
+  },
+  "repo": {
+    "role": "Example reference provider",
+    "category": "ai-provider",
+    "tech": [
+      "typescript"
     ]
   }
 }
