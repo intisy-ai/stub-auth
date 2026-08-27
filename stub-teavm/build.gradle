@@ -10,7 +10,7 @@ dependencies {
     // canned response shape. :stub-provider only compileOnly's :auth-contracts, which does not
     // propagate, so the Provider vocabulary is declared again here.
     implementation project(":stub-provider")
-    githubImplementation "intisy-ai:core-auth:1.4.1:auth-contracts"
+    githubImplementation "intisy-ai:core-auth:2.0.0:auth-contracts"
     // :stub-provider keeps :ir `implementation`, which does not propagate, and StubProvider's
     // supertype chain reaches IrHandler, so this compile step needs it declared again.
     githubImplementation "intisy-ai:core-ir:1.4.0:ir"
