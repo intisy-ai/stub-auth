@@ -51,8 +51,9 @@
   "scripts": {
     "build": "node node_modules/@intisy-ai/api/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/javaProvider.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --outfile=dist/javaProvider.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/driver.js && npx esbuild src/plugin.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/core-ir --external:sync-bridge --outfile=dist/plugin.js",
     "postbuild": "node dist/index.js readme",
-    "test": "npm run build && vitest run",
-    "prepublishOnly": "npm run build"
+    "test": "npm run typecheck && npm run build && vitest run",
+    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@intisy-ai/api": "^1.0.2",

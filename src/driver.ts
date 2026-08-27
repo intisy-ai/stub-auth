@@ -4,7 +4,7 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter } from "@intisy-ai/core-auth";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
 import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
@@ -91,7 +91,7 @@ async function handleIr(ir, ctx) {
 // account_selection_strategy is deliberately NOT in this schema: it is core-auth's
 // own COMMON_PROVIDER_CAPABILITIES/COMMON_PROVIDER_DEFAULTS field, shared verbatim by
 // every provider, so it stays wired into settings.groups below exactly as before.
-export const STUB_SETTINGS_SCHEMA = [
+export const STUB_SETTINGS_SCHEMA: ProviderSettingsSchema = [
   { title: "General", fields: [
     { key: "logging", label: "Logging", type: "bool", hint: "Write this plugin's log file." },
   ] },
