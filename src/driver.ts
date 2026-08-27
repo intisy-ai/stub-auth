@@ -4,7 +4,7 @@
 // (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema, type SettingsMenuGroup } from "@intisy-ai/core-auth";
 import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
@@ -129,9 +129,11 @@ export const driver = {
   settings: {
     groups: [
       ...toSettingsGroups(STUB_SETTINGS_SCHEMA),
-      { title: "Account rotation", fields: [
-        { key: "account_selection_strategy", label: "Account selection", type: "enum", options: ["sticky", "round-robin", "hybrid"], hint: "How accounts are picked (rotation lives in core-auth). Applies next launch." },
-      ] },
+      {
+        title: "Account rotation", fields: [
+          { key: "account_selection_strategy", label: "Account selection", type: "enum", options: ["sticky", "round-robin", "hybrid"], hint: "How accounts are picked (rotation lives in core-auth). Applies next launch." },
+        ],
+      } satisfies SettingsMenuGroup,
     ],
     get: (key) => getConfigValue("stub-auth", key),
     set: (key, value) => setConfigValue("stub-auth", key, value),
