@@ -11,7 +11,7 @@ describe("stub driver.handleIr (Java) regression", () => {
     expect(ir.id).toBe("msg_stub_0001");
     expect(ir.model).toBe("stub-pro");
     expect(ir.content[0].kind).toBe("text");
-    expect(ir.content[0].text).toBe("Hello from stub-auth: the core-auth pipeline works end to end. (served by stub-pro)");
+    expect(ir.content[0].text).toBe("Hello from stub-auth: the basekit auth pipeline works end to end. (served by stub-pro)");
     expect(ir.stopReason).toBe("end_turn");
     expect(ir.usage).toEqual({ inputTokens: 1, outputTokens: 12 });
   });

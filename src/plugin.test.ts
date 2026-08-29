@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { providerSupport } from "@intisy-ai/core-auth";
+import { providerSupport } from "@intisy-ai/basekit/auth";
 import plugin from "./plugin.js";
 
 // The host's own service, which is where the provider helpers come from now. A test supplies the

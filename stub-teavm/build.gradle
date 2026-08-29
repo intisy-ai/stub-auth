@@ -10,10 +10,10 @@ dependencies {
     // canned response shape. :stub-provider only compileOnly's :auth-contracts, which does not
     // propagate, so the Provider vocabulary is declared again here.
     implementation project(":stub-provider")
-    githubImplementation "intisy-ai:core-auth:2.0.0:auth-contracts"
+    githubImplementation "intisy-ai:basekit:4.0.0:auth-contracts"
     // :stub-provider keeps :ir `implementation`, which does not propagate, and StubProvider's
     // supertype chain reaches IrHandler, so this compile step needs it declared again.
-    githubImplementation "intisy-ai:core-ir:1.4.0:ir"
+    githubImplementation "intisy-ai:basekit:4.0.0:ir"
     // :seam and :js-base carry api's seam implementations (SimpleJsonCodec and the JSO bridges),
     // reused rather than duplicated: every implementation here is a copy embedded in this bundle.
     githubImplementation "intisy-ai:api:1.7.0:seam"
@@ -31,8 +31,8 @@ dependencies {
 // jso-apis/extension-spi artifacts publish a minimum JVM-version metadata of 11-17, so
 // :stub-teavm needs a newer compile target than :stub-provider -- override both the extension's
 // compatibility (fixes Gradle's dependency-resolution JVM-version attribute matching) and the
-// compileJava task's --release option. Mirrors core-auth's auth-teavm/build.gradle exactly
-// (which itself mirrors core-proxy/java/teavm/build.gradle and ai-java's original js/build.gradle).
+// compileJava task's --release option. Mirrors basekit's auth-teavm/build.gradle exactly
+// (which itself mirrors basekit's proxy-teavm/build.gradle and ai-java's original js/build.gradle).
 java {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17

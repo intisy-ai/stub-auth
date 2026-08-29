@@ -1,26 +1,26 @@
 // @ts-nocheck
 // The whole provider: an IR-native handleIr that returns a canned IrResponse (or a canonical IR
 // event stream). The front-door owns app<->IR translation, so this provider carries no app-wire
-// (Anthropic) format code. core-auth turns this into the OpenCode and Claude integrations.
+// (Anthropic) format code. basekit/auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
-import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema, type SettingsMenuGroup } from "@intisy-ai/core-auth";
-import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
+import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema, type SettingsMenuGroup } from "@intisy-ai/basekit/auth";
+import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/basekit";
 import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
 import stubModelsSeed from "./generated/stub-models.json";
 
 // This module owns the AccountManager (addAccount can emit account activity) and is bundled
 // independently into dist/driver.js as well as dist/index.js and dist/handler.js, each with its
-// own copy of core-auth's module-level emitter, so it needs its own one-time wiring.
+// own copy of basekit/auth's module-level emitter, so it needs its own one-time wiring.
 setActivityEmitter((spec, source) => emitEvent(spec, source));
 
 // Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
-// this bundled driver import it from here, not straight from core-auth/dist -- esbuild inlines
+// this bundled driver import it from here, not straight from basekit/auth -- esbuild inlines
 // a separate copy of the class per bundle, so importing from two different bundles gives two
 // different (non-instanceof-compatible) classes.
 export { HandleIrError };
 
-// Account rotation lives in core-auth (selection.ts); the strategy is just config.
+// Account rotation lives in basekit/auth (selection.ts); the strategy is just config.
 const accountManager = new AccountManager("stub", commonManagerOptions({ account_selection_strategy: getConfigValue("stub-auth", "account_selection_strategy") }));
 
 function stubAddAccount() {
@@ -58,7 +58,7 @@ async function handleIr(ir, ctx) {
   const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
 
   // Carry the orchestrator's real transport outcome through the typed error contract
-  // (core-proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
+  // (basekit/proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
   // reconstruct the real status/headers/body and route it through the same rate-limit/fallback
   // logic a normal response would get. The only non-200 status this orchestrator ever returns is
   // 529 (the fail_rate roll) -- no retryAfterMs is included since fail_rate is a synthetic dice
@@ -88,7 +88,7 @@ async function handleIr(ir, ctx) {
 
 // One schema drives both the loader-TUI settings.groups and the Cairn capabilities
 // fields (see index.ts), so the two surfaces can never drift out of key-set sync.
-// account_selection_strategy is deliberately NOT in this schema: it is core-auth's
+// account_selection_strategy is deliberately NOT in this schema: it is basekit/auth's
 // own COMMON_PROVIDER_CAPABILITIES/COMMON_PROVIDER_DEFAULTS field, shared verbatim by
 // every provider, so it stays wired into settings.groups below exactly as before.
 export const STUB_SETTINGS_SCHEMA: ProviderSettingsSchema = [
@@ -131,7 +131,7 @@ export const driver = {
       ...toSettingsGroups(STUB_SETTINGS_SCHEMA),
       {
         title: "Account rotation", fields: [
-          { key: "account_selection_strategy", label: "Account selection", type: "enum", options: ["sticky", "round-robin", "hybrid"], hint: "How accounts are picked (rotation lives in core-auth). Applies next launch." },
+          { key: "account_selection_strategy", label: "Account selection", type: "enum", options: ["sticky", "round-robin", "hybrid"], hint: "How accounts are picked (rotation lives in basekit/auth). Applies next launch." },
         ],
       } satisfies SettingsMenuGroup,
     ],

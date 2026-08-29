@@ -1,5 +1,5 @@
 // Proves stub-auth's handleIr throws the canonical typed transport error
-// (core-proxy's HandleIrError) instead of a plain Error on a non-2xx upstream outcome. The
+// (basekit/proxy's HandleIrError) instead of a plain Error on a non-2xx upstream outcome. The
 // front-door reconstructs the Response from that typed error, so this provider carries no
 // app-wire encoding of its own to test here.
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 // @ts-ignore build artifacts (produced by `npm run build`)
 // HandleIrError is re-exported from driver.js itself (not imported straight from
-// core-proxy/dist) so `instanceof` checks against errors thrown inside this same bundle work --
-// esbuild inlines its own copy of the class per bundle, so a separately imported core-proxy/dist
+// basekit/proxy) so `instanceof` checks against errors thrown inside this same bundle work --
+// esbuild inlines its own copy of the class per bundle, so a separately imported basekit/proxy
 // copy would be a different, non-instanceof-compatible class.
 import { driver, HandleIrError } from "../../dist/driver.js";
 

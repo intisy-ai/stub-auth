@@ -49,7 +49,7 @@ class StubProviderCapabilityTest {
     @Test
     void getConfigValues_returnsDefaultsWhenStoreEmpty() {
         Map<String, Object> values = new StubProvider().getConfigValues(ctxWith(new FakeStore()));
-        assertEquals("Hello from stub-auth: the core-auth pipeline works end to end.", values.get("response_text"));
+        assertEquals("Hello from stub-auth: the basekit auth pipeline works end to end.", values.get("response_text"));
         assertEquals(0L, values.get("latency_ms"));
         assertEquals(0.0, (double) values.get("fail_rate"));
         assertEquals("hybrid", values.get("account_selection_strategy"));

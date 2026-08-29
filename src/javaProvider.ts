@@ -2,7 +2,7 @@
 // Lazy, memoized bridge to the TeaVM-compiled Java provider. The generated ESM is imported only
 // on first use, never at plugin registration, so quick launches never evaluate it.
 
-import { lazyModule } from "@intisy-ai/core-auth";
+import { lazyModule } from "@intisy-ai/basekit/auth";
 
 const stubOrchestrator = lazyModule(() => import("./generated/stub-provider.teavm.js"));
 

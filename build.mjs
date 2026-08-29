@@ -2,7 +2,7 @@ import { build } from "esbuild";
 
 // Every first-party library stays external and is resolved from the home's shared library store, so
 // a deployed clone links one copy rather than embedding its own.
-const EXTERNAL = ["@intisy-ai/core", "@intisy-ai/core-auth", "@intisy-ai/core-ir"];
+const EXTERNAL = ["@intisy-ai/basekit", "@intisy-ai/basekit/*"];
 
 const ENTRY_POINTS = ["index", "handler", "javaProvider", "driver", "plugin"];
 

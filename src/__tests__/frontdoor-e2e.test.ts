@@ -1,6 +1,6 @@
 // End-to-end proof of the generic deployed front-door: opencode-proxy's own deployFrontDoor
 // copies its built adapter to <home>/frontdoor/app-frontdoor.mjs, and stub-auth's generic
-// createProviderPlugin (core-auth) resolves it via HUB_CONFIG_DIR alone (no HUB_APP_FRONTDOOR,
+// createProviderPlugin (basekit/auth) resolves it via HUB_CONFIG_DIR alone (no HUB_APP_FRONTDOOR,
 // no opencode-loader), serving a real Anthropic-wire response in-process with no daemon. Requires
 // opencode-proxy's dist/index.js + dist/frontdoor.mjs to be built; skips (with a log) otherwise,
 // since the per-repo unit tests already cover each half of this wiring independently.
@@ -9,7 +9,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 // @ts-ignore build artifact (produced by `npm run build`)
-import { createProviderPlugin } from "@intisy-ai/core-auth";
+import { createProviderPlugin } from "@intisy-ai/basekit/auth";
 // @ts-ignore build artifact (produced by `npm run build`)
 import { driver } from "../../dist/driver.js";
 

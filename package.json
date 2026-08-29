@@ -1,7 +1,7 @@
 {
   "name": "stub-auth",
   "version": "1.10.9",
-  "description": "Stub AI provider driver for core-auth: canned responses to validate the auth pipeline; the reference example for building provider plugins.",
+  "description": "Stub AI provider driver for basekit/auth: canned responses to validate the auth pipeline; the reference example for building provider plugins.",
   "main": "dist/index.js",
   "type": "module",
   "license": "MIT",
@@ -11,7 +11,7 @@
     "url": "git+https://github.com/intisy-ai/stub-auth.git"
   },
   "keywords": [
-    "core-auth",
+    "basekit",
     "provider",
     "stub",
     "auth",
@@ -64,8 +64,6 @@
     "vitest": "^3.2.6"
   },
   "dependencies": {
-    "@intisy-ai/core": "^2.6.0",
-    "@intisy-ai/core-auth": "^2.0.0",
-    "@intisy-ai/core-ir": "^1.4.0"
+    "@intisy-ai/basekit": "^4.0.0"
   }
 }
