@@ -49,14 +49,14 @@
     ]
   },
   "scripts": {
-    "build": "node node_modules/@intisy-ai/api/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && node build.mjs",
+    "build": "node node_modules/@intisy/bayonet/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && node build.mjs",
     "postbuild": "node dist/index.js readme",
     "test": "npm run typecheck && npm run build && vitest run",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@intisy-ai/api": "^1.0.2",
+    "@intisy/bayonet": "^1.7.0",
     "@types/bun": "^1.3.14",
     "@types/node": "^25.9.1",
     "esbuild": "^0.25.0",
