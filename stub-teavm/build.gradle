@@ -10,10 +10,10 @@ dependencies {
     // canned response shape. :stub-provider only compileOnly's :auth-contracts, which does not
     // propagate, so the Provider vocabulary is declared again here.
     implementation project(":stub-provider")
-    githubImplementation "intisy-ai:basekit:4.2.0:auth-contracts"
+    githubImplementation "intisy-ai:basekit:4.3.0:auth-contracts"
     // :stub-provider keeps :ir `implementation`, which does not propagate, and StubProvider's
     // supertype chain reaches IrHandler, so this compile step needs it declared again.
-    githubImplementation "intisy-ai:basekit:4.2.0:ir"
+    githubImplementation "intisy-ai:basekit:4.3.0:ir"
     // :seam and :js-base carry api's seam implementations (SimpleJsonCodec and the JSO bridges),
     // reused rather than duplicated: every implementation here is a copy embedded in this bundle.
     githubImplementation "intisy:bayonet:1.7.0:seam"
