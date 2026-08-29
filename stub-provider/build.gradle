@@ -14,15 +14,15 @@ dependencies {
     // A release-asset jar exports nothing, so the seam interfaces :ir used to hand over
     // transitively (HandlerCtx's public fields name them) are declared here. compileOnly for the
     // same thin-jar reason as the contracts above: the host supplies them at run time.
-    githubCompileOnly "intisy-ai:api:1.6.0:contract"
-    githubTestImplementation "intisy-ai:api:1.6.0:contract"
+    githubCompileOnly "intisy-ai:api:1.7.0:contract"
+    githubTestImplementation "intisy-ai:api:1.7.0:contract"
 
     // The vocabulary above is compileOnly, which does not reach the test compile classpath. The
     // tests need it twice over: to name these types directly, and because StubProviderIntegrationTest
     // loads the built jar on a child classloader that resolves them PARENT-first, exactly as a host
     // does. :seam also supplies the portable codec and store the tests drive the provider with.
     githubTestImplementation "intisy-ai:core-auth:2.0.0:auth-contracts"
-    githubTestImplementation "intisy-ai:api:1.6.0:seam"
+    githubTestImplementation "intisy-ai:api:1.7.0:seam"
 }
 
 // Keep the jar filename version-less (stub-provider.jar) even though project.version is now set

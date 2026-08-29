@@ -16,13 +16,13 @@ dependencies {
     githubImplementation "intisy-ai:core-ir:1.4.0:ir"
     // :seam and :js-base carry api's seam implementations (SimpleJsonCodec and the JSO bridges),
     // reused rather than duplicated: every implementation here is a copy embedded in this bundle.
-    githubImplementation "intisy-ai:api:1.6.0:seam"
-    githubImplementation "intisy-ai:api:1.6.0:js-base"
+    githubImplementation "intisy-ai:api:1.7.0:seam"
+    githubImplementation "intisy-ai:api:1.7.0:js-base"
 
     // The seam interfaces, which a release-asset jar does not export transitively. implementation
     // rather than compileOnly because compileOnly does not propagate and TeaVM can only transpile
     // what it resolves; they are interfaces, so the embedded bytes are negligible.
-    githubImplementation "intisy-ai:api:1.6.0:contract"
+    githubImplementation "intisy-ai:api:1.7.0:contract"
     teavm teavm.libs.jsoApis
 }
 
