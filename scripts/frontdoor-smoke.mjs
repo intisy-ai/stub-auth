@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Raw-Node smoke test proving standalone in-process serving: a temp home carrying ONLY the
 // generic deployed front-door (<home>/frontdoor/app-frontdoor.mjs, produced by opencode-proxy's
-// own deployFrontDoor) is enough for core-auth's resolveAppFrontDoor to find it via HUB_CONFIG_DIR
+// own deployFrontDoor) is enough for basekit/auth's resolveAppFrontDoor to find it via HUB_CONFIG_DIR
 // alone. No HUB_APP_FRONTDOOR env, no opencode-loader, no daemon. Vitest's module loader is more
 // lenient than plain Node about bare-path dynamic import() specifiers (Windows reads a drive
 // letter as a URL scheme), so running this via raw `node` proves the real runtime behavior.
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,7 +15,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const stubAuthDir = join(scriptDir, "..");
 const repoRoot = join(stubAuthDir, "..", "..");
 const opencodeProxyIndexPath = join(repoRoot, "proxies", "opencode-proxy", "dist", "index.js");
-const coreAuthIndexPath = join(stubAuthDir, "core-auth", "dist", "index.js");
+const authIndexPath = createRequire(import.meta.url).resolve("@intisy-ai/basekit/auth");
 const driverPath = join(stubAuthDir, "dist", "driver.js");
 
 function fail(message) {
@@ -23,7 +24,7 @@ function fail(message) {
 }
 
 if (!existsSync(opencodeProxyIndexPath)) fail(`opencode-proxy dist not built at ${opencodeProxyIndexPath} (run "npm run build" in proxies/opencode-proxy)`);
-if (!existsSync(coreAuthIndexPath)) fail(`core-auth dist not built at ${coreAuthIndexPath} (run "npm run build" in providers/stub-auth)`);
+if (!existsSync(authIndexPath)) fail(`basekit/auth not resolvable at ${authIndexPath} (run "npm install" in providers/stub-auth)`);
 if (!existsSync(driverPath)) fail(`stub-auth driver dist not built at ${driverPath} (run "npm run build" in providers/stub-auth)`);
 
 const smokeHome = mkdtempSync(join(tmpdir(), "fd-smoke-"));
@@ -37,7 +38,7 @@ if (!existsSync(deployedPath)) fail(`deployFrontDoor did not produce ${deployedP
 delete process.env.HUB_APP_FRONTDOOR;
 process.env.HUB_CONFIG_DIR = smokeHome;
 
-const { createProviderPlugin } = await import(pathToFileURL(coreAuthIndexPath).href);
+const { createProviderPlugin } = await import(pathToFileURL(authIndexPath).href);
 const { driver } = await import(pathToFileURL(driverPath).href);
 
 const plugin = createProviderPlugin(driver);
