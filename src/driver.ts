@@ -81,7 +81,10 @@ async function handleIr(ir: IrRequest, ctx: HandlerCtx): Promise<IrResponse | Re
 
   return new ReadableStream<IrStreamEvent>({
     start(controller) {
-      controller.enqueue({ event: "message_start", id: irResponse.id, model: irResponse.model, role: "assistant", usage: { inputTokens: irResponse.usage.inputTokens, outputTokens: 0 } });
+      // The orchestrator always reports usage, but the IR models it optional for a handler that
+      // cannot, so the stream's opening event reads zero rather than claiming a count it lacks.
+      const inputTokens = irResponse.usage?.inputTokens ?? 0;
+      controller.enqueue({ event: "message_start", id: irResponse.id, model: irResponse.model, role: "assistant", usage: { inputTokens, outputTokens: 0 } });
       controller.enqueue({ event: "content_block_start", index: 0, blockKind: "text" });
       controller.enqueue({ event: "text_delta", index: 0, text: cannedText(irResponse) });
       controller.enqueue({ event: "content_block_stop", index: 0 });
