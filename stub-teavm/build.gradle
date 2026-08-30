@@ -16,18 +16,18 @@ dependencies {
     githubImplementation "intisy-ai:basekit:4.3.0:ir"
     // :seam and :js-base carry api's seam implementations (SimpleJsonCodec and the JSO bridges),
     // reused rather than duplicated: every implementation here is a copy embedded in this bundle.
-    githubImplementation "intisy:bayonet:1.7.0:seam"
-    githubImplementation "intisy:bayonet:1.7.0:js-base"
+    githubImplementation "intisy:bayonet:1.8.0:seam"
+    githubImplementation "intisy:bayonet:1.8.0:js-base"
 
     // The seam interfaces, which a release-asset jar does not export transitively. implementation
     // rather than compileOnly because compileOnly does not propagate and TeaVM can only transpile
     // what it resolves; they are interfaces, so the embedded bytes are negligible.
-    githubImplementation "intisy:bayonet:1.7.0:contract"
+    githubImplementation "intisy:bayonet:1.8.0:contract"
     // SOURCE-retention, so nothing here reaches the bundle. The processor jar is a release asset and
     // carries no transitive metadata, so the annotation types it reads are named beside it.
-    githubCompileOnly "intisy:bayonet:1.7.0:annotations"
-    githubAnnotationProcessor "intisy:bayonet:1.7.0:processor"
-    githubAnnotationProcessor "intisy:bayonet:1.7.0:annotations"
+    githubCompileOnly "intisy:bayonet:1.8.0:annotations"
+    githubAnnotationProcessor "intisy:bayonet:1.8.0:processor"
+    githubAnnotationProcessor "intisy:bayonet:1.8.0:annotations"
     teavm teavm.libs.jsoApis
 }
 
