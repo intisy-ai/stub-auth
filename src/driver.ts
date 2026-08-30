@@ -1,18 +1,20 @@
-// @ts-nocheck
 // The whole provider: an IR-native handleIr that returns a canned IrResponse (or a canonical IR
 // event stream). The front-door owns app<->IR translation, so this provider carries no app-wire
 // (Anthropic) format code. basekit/auth turns this into the OpenCode and Claude integrations.
 // Includes a fake login so it demonstrates the shared account menu with only the core defaults.
 
 import { AccountManager, accountControllerFromManager, addAccount, commonManagerOptions, HandleIrError, toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema, type SettingsMenuGroup } from "@intisy-ai/basekit/auth";
-import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/basekit";
-import { handleViaOrchestrator, buildModelsViaJava } from "./javaProvider.js";
-import stubModelsSeed from "./generated/stub-models.json";
+import { getAppConfigDir, loadConfig, getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/basekit";
+import type { HandlerCtx, IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/basekit/ir";
+import { buildModels, handleViaOrchestrator } from "./javaProvider.js";
 
 // This module owns the AccountManager (addAccount can emit account activity) and is bundled
 // independently into dist/driver.js as well as dist/index.js and dist/handler.js, each with its
 // own copy of basekit/auth's module-level emitter, so it needs its own one-time wiring.
-setActivityEmitter((spec, source) => emitEvent(spec, source));
+setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
+
+/** How many models are advertised before anything has read the configured count. */
+const DEFAULT_MODEL_COUNT = 3;
 
 // Re-exported so callers (tests included) that need `instanceof HandleIrError` to work against
 // this bundled driver import it from here, not straight from basekit/auth -- esbuild inlines
@@ -40,9 +42,6 @@ function readResponseConfig() {
   };
 }
 
-const jsRandom = () => Math.random();
-const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
 // The IR-native entry point. The actual decision (model resolution, response text,
 // fail-rate roll, latency) still lives entirely in the Java orchestrator this calls via
 // handleViaOrchestrator -- this only adapts its JSON decision into the canonical
@@ -51,11 +50,18 @@ const jsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // orchestrator call (we only need the resolved model/text/usage out of it); whether THIS call
 // returns an IrResponse or an IrEventStream is decided here, from ir.stream / the streaming config
 // override, exactly like the orchestrator's own useStream precedence.
-async function handleIr(ir, ctx) {
+// The canned reply is one text block, which the union the IR models content with cannot say on its
+// own, so the kind is checked rather than asserted.
+function cannedText(response: IrResponse): string {
+  const first = response.content[0];
+  return first && first.kind === "text" ? first.text : "";
+}
+
+async function handleIr(ir: IrRequest, ctx: HandlerCtx): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
   const responseConfig = readResponseConfig();
   const inputsJson = JSON.stringify({ bodyText: JSON.stringify({ model: ir && ir.model }), ctxModel: (ctx && ctx.model) || "" });
   const configJson = JSON.stringify({ ...responseConfig, streaming: false });
-  const decision = await handleViaOrchestrator(inputsJson, configJson, jsRandom, jsSleep);
+  const decision = await handleViaOrchestrator(inputsJson, configJson);
 
   // Carry the orchestrator's real transport outcome through the typed error contract
   // (basekit/proxy's HandleIrError) instead of a plain Error, so the front door (server.ts) can
@@ -68,16 +74,16 @@ async function handleIr(ir, ctx) {
   }
 
   // The orchestrator returns canonical IR JSON, so it IS the IrResponse; no app-wire remapping.
-  const irResponse = JSON.parse(decision.body);
+  const irResponse = JSON.parse(decision.body) as IrResponse;
 
   const useStream = responseConfig.streaming !== null ? responseConfig.streaming : !!(ir && ir.stream);
   if (!useStream) return irResponse;
 
-  return new ReadableStream({
+  return new ReadableStream<IrStreamEvent>({
     start(controller) {
       controller.enqueue({ event: "message_start", id: irResponse.id, model: irResponse.model, role: "assistant", usage: { inputTokens: irResponse.usage.inputTokens, outputTokens: 0 } });
       controller.enqueue({ event: "content_block_start", index: 0, blockKind: "text" });
-      controller.enqueue({ event: "text_delta", index: 0, text: irResponse.content[0].text });
+      controller.enqueue({ event: "text_delta", index: 0, text: cannedText(irResponse) });
       controller.enqueue({ event: "content_block_stop", index: 0 });
       controller.enqueue({ event: "message_delta", stopReason: irResponse.stopReason, usage: irResponse.usage });
       controller.enqueue({ event: "message_stop" });
@@ -86,11 +92,15 @@ async function handleIr(ir, ctx) {
   });
 }
 
-// One schema drives both the loader-TUI settings.groups and the Cairn capabilities
-// fields (see index.ts), so the two surfaces can never drift out of key-set sync.
-// account_selection_strategy is deliberately NOT in this schema: it is basekit/auth's
-// own COMMON_PROVIDER_CAPABILITIES/COMMON_PROVIDER_DEFAULTS field, shared verbatim by
-// every provider, so it stays wired into settings.groups below exactly as before.
+/**
+ * What this provider can be told, as both surfaces render it.
+ *
+ * @remarks
+ * One schema drives the loader TUI's settings groups and the capability fields alike, so the two can
+ * never drift out of key-set sync. `account_selection_strategy` is deliberately absent: it is
+ * basekit/auth's own common field, shared verbatim by every provider, and is wired into the groups
+ * below rather than restated here.
+ */
 export const STUB_SETTINGS_SCHEMA: ProviderSettingsSchema = [
   { title: "General", fields: [
     { key: "logging", label: "Logging", type: "bool", hint: "Write this plugin's log file." },
@@ -110,16 +120,19 @@ export const STUB_SETTINGS_SCHEMA: ProviderSettingsSchema = [
   ] },
 ];
 
+/** What this provider offers a host: its models, how to serve one, how to log in, and its settings. */
 export const driver = {
   id: "stub",
   label: "Stub",
   appProviderId: "stub",
   appNpm: "@ai-sdk/anthropic",
-  models: stubModelsSeed,
+  // The advertised floor, built by the same Java a refresh calls; fetchModels honours the
+  // configured count, so this only has to answer before anyone has asked for one.
+  models: buildModels(DEFAULT_MODEL_COUNT),
   async fetchModels() {
     const cfg = loadConfig("stub-auth", getAppConfigDir());
-    const count = typeof cfg.model_count === "number" ? cfg.model_count : 3;
-    try { return { models: await buildModelsViaJava(count) }; } catch { return null; }
+    const count = typeof cfg.model_count === "number" ? cfg.model_count : DEFAULT_MODEL_COUNT;
+    try { return { models: buildModels(count) }; } catch { return null; }
   },
   handleIr,
   loginFlow: async () => ({ url: "https://example.com/stub-login", instructions: "Stub login (no real OAuth), completes immediately.", complete: async () => stubAddAccount() }),
@@ -135,8 +148,8 @@ export const driver = {
         ],
       } satisfies SettingsMenuGroup,
     ],
-    get: (key) => getConfigValue("stub-auth", key),
-    set: (key, value) => setConfigValue("stub-auth", key, value),
+    get: (key: string) => getConfigValue("stub-auth", key),
+    set: (key: string, value: unknown) => setConfigValue("stub-auth", key, value),
   },
   proxies: true,
 };

@@ -23,6 +23,11 @@ dependencies {
     // rather than compileOnly because compileOnly does not propagate and TeaVM can only transpile
     // what it resolves; they are interfaces, so the embedded bytes are negligible.
     githubImplementation "intisy:bayonet:1.7.0:contract"
+    // SOURCE-retention, so nothing here reaches the bundle. The processor jar is a release asset and
+    // carries no transitive metadata, so the annotation types it reads are named beside it.
+    githubCompileOnly "intisy:bayonet:1.7.0:annotations"
+    githubAnnotationProcessor "intisy:bayonet:1.7.0:processor"
+    githubAnnotationProcessor "intisy:bayonet:1.7.0:annotations"
     teavm teavm.libs.jsoApis
 }
 
@@ -40,6 +45,9 @@ java {
 
 tasks.named("compileJava") {
     options.release = 17
+    // Emits the .d.ts for this bundle's exports, so the TypeScript seam is typed against the Java
+    // rather than against a copy of it someone kept in step by hand.
+    options.compilerArgs << "-Atsemit.name=stub-provider.teavm"
 }
 
 // Same JVM-version attribute matching problem as compileJava, now that the root block also

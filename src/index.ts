@@ -1,15 +1,15 @@
-// @ts-nocheck
 // OpenCode entry (the deployed plugin file). basekit/auth registers the native
 // provider + auth method and routes requests to driver.handleIr.
 
 import { defineProviderPlugin, setActivityEmitter } from "@intisy-ai/basekit/auth";
 import { driver } from "./driver.js";
-import { emitEvent } from "@intisy-ai/basekit";
+import { emitEvent, type ActivitySpec } from "@intisy-ai/basekit";
 import { maybeRunCli } from "./commands.js";
 
 // Best-effort: let basekit/auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
-setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
+setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
+/** What an app that invokes every exported function loads; an api host reads the default export. */
 export const StubProvider = await defineProviderPlugin({
   name: "stub-auth",
   driver,

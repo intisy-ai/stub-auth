@@ -33,4 +33,5 @@ const plugin: Plugin = {
   deactivate() {},
 };
 
+/** This plugin, as an api host loads it. */
 export default plugin;

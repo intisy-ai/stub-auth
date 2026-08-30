@@ -12,14 +12,36 @@ import org.teavm.jso.core.JSString;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * The JS export surface over this provider's orchestrator.
+ *
+ * @implNote {@code io.github.intisy.ai.js.surface.StubProviderSurface} declares what this exports
+ * for a TypeScript consumer, because JSPromise, JSString and the two JSO functors mean nothing to
+ * one. A rejected promise carries the failure as text rather than crossing as a raw JS exception.
+ */
 public final class StubProviderJs {
     private StubProviderJs() {}
 
+    /**
+     * The models this provider advertises.
+     *
+     * @param count how many stub models to build
+     * @return the models as a JSON object, keyed by model id
+     */
     @JSExport
     public static String buildModelsJson(int count) {
         return StubProvider.buildModels(count);
     }
 
+    /**
+     * Runs one request through the orchestrator, which owns every decision it makes.
+     *
+     * @param inputsJson the request's model and the handler context's, as a JSON object
+     * @param configJson the response text, latency, failure rate and streaming override, as JSON
+     * @param jsRandom the host's random source, which the failure roll draws from
+     * @param jsSleep the host's timer, which the simulated latency waits on
+     * @return a promise of the status, headers and body as a JSON object
+     */
     @JSExport
     public static JSPromise<JSString> handleStubRequestAsync(
             String inputsJson, String configJson,

@@ -49,9 +49,10 @@
     ]
   },
   "scripts": {
-    "build": "node node_modules/@intisy/bayonet/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node -e \"const fs=require('fs'); import('./src/generated/stub-provider.teavm.js').then(m=>fs.writeFileSync('src/generated/stub-models.json', m.buildModelsJson(3)))\" && node build.mjs",
+    "emit:teavm": "node node_modules/@intisy/bayonet/scripts/emit-dts.mjs --java-dir . --module :stub-teavm --out src/generated",
+    "build": "npm run emit:teavm && node node_modules/@intisy/bayonet/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js && node build.mjs",
     "postbuild": "node dist/index.js readme",
-    "test": "npm run typecheck && npm run build && vitest run",
+    "test": "npm run build && npm run typecheck && vitest run",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },

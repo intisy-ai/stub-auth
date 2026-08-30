@@ -51,6 +51,7 @@ import java.util.Map;
  */
 public final class StubProvider implements Provider, ConfigurableProvider, ModelCatalogProvider, QuotaProvider {
 
+    /** What a reply carries when this home has configured no text of its own. */
     public static final String DEFAULT_RESPONSE_TEXT = "stub response";
     private static final String DEFAULT_MODEL = "stub-model";
 
@@ -148,6 +149,10 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
     /**
      * The canned reply as an {@link IrResponse}, the single place that assembles it. {@link #handleIr}
      * (the JVM path) returns it directly; the JS/TeaVM path serializes it via {@link #buildIrResponseJson}.
+     *
+     * @param model the model to answer as
+     * @param responseText the text the reply carries
+     * @return the canned reply
      */
     public static IrResponse buildIrResponse(String model, String responseText) {
         IrResponse ir = new IrResponse();
@@ -164,6 +169,11 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
      * front-door consumes), for the TeaVM JS export {@code driver.ts} calls. No app-wire format is
      * involved: the front-door owns IR&lt;-&gt;app translation. {@code json} is the routing SPI codec
      * every caller here already threads in (GsonJsonCodec on the JVM, SimpleJsonCodec from the export).
+     *
+     * @param json the codec to serialize with
+     * @param model the model to answer as
+     * @param responseText the text the reply carries
+     * @return the canned reply as canonical IR JSON
      */
     public static String buildIrResponseJson(io.github.intisy.ai.api.seam.JsonCodec json, String model, String responseText) {
         IrResponse ir = buildIrResponse(model, responseText);
@@ -182,6 +192,13 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
         return json.stringify(out);
     }
 
+    /**
+     * The canned reply as a server-sent-event body, for a caller answering a streamed request.
+     *
+     * @param model the model to answer as
+     * @param responseText the text the reply carries
+     * @return the event stream as one body
+     */
     public static String buildStreamBody(String model, String responseText) {
         String text = stubText(model, responseText);
         String startMsg = "{\"id\":\"msg_stub_0001\",\"type\":\"message\",\"role\":\"assistant\",\"model\":"
@@ -206,6 +223,9 @@ public final class StubProvider implements Provider, ConfigurableProvider, Model
      * {@link #modelEntries}, the single ordered id/name source this method AND
      * {@link #models(HandlerCtx)} (the typed {@code ModelCatalogProvider} capability) both
      * derive from -- never two separately hardcoded model lists.
+     *
+     * @param count how many models to build, clamped to at least one
+     * @return the models as a JSON object, keyed by model id
      */
     public static String buildModels(int count) {
         String[][] entries = modelEntries(count);
