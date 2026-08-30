@@ -65,6 +65,6 @@
     "vitest": "^3.2.6"
   },
   "dependencies": {
-    "@intisy-ai/basekit": "^4.0.0"
+    "@intisy-ai/basekit": "^5.0.0"
   }
 }
